@@ -1,0 +1,61 @@
+{
+  "brokers": [
+    {
+      "name": "proxy.gonka.gg",
+      "base_url": "${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}",
+      "api_key": "${GONKA_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "gonkagate.com",
+      "base_url": "${GONKAGATE_BASE_URL:-https://api.gonkagate.com/v1}",
+      "api_key": "${GONKAGATE_API_KEY}",
+      "models": {
+        "kimi-k2.6": "moonshotai/kimi-k2.6",
+        "qwen3-235b": "qwen/qwen3-235b-a22b-instruct-2507-fp8",
+        "minimax-m2.7": "minimaxai/minimax-m2.7"
+      }
+    },
+    {
+      "name": "mingles.ai",
+      "base_url": "${MINGLES_BASE_URL:-https://gonka-gateway.mingles.ai/v1}",
+      "api_key": "${MINGLES_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" }
+      ]
+    },
+    {
+      "name": "gonka-api.org",
+      "base_url": "${GONKA_API_ORG_BASE_URL:-https://hskyauefqcgbvgvxkluj.supabase.co/functions/v1/gonka}",
+      "api_key": "${GONKA_API_ORG_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "console.hyperfusion.io",
+      "base_url": "${HYPERFUSION_BASE_URL:-https://api.hyperfusion.io/v1}",
+      "api_key": "${HYPERFUSION_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "router.gonkascan.com",
+      "base_url": "${GONKASCAN_BASE_URL:-https://api.gonkascan.com/v1}",
+      "api_key": "${GONKASCAN_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    }
+  ]
+}

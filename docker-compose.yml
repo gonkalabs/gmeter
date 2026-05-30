@@ -1,0 +1,46 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      GONKA_API_KEY: ${GONKA_API_KEY:-}
+      GONKA_BASE_URL: ${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}
+      GONKA_MODELS: ${GONKA_MODELS:-moonshotai/Kimi-K2.6,Qwen/Qwen3-235B-A22B-Instruct-2507-FP8,MiniMaxAI/MiniMax-M2.7}
+      DATABASE_URL: sqlite:////app/data/gmeter.db
+      DEFAULT_MODELS: ${DEFAULT_MODELS:-moonshotai/Kimi-K2.6,Qwen/Qwen3-235B-A22B-Instruct-2507-FP8,MiniMaxAI/MiniMax-M2.7}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      PROBE_INTERVAL_MINUTES: ${PROBE_INTERVAL_MINUTES:-10}
+      LIMITS_INTERVAL_MINUTES: ${LIMITS_INTERVAL_MINUTES:-60}
+      GONKAGATE_BASE_URL: ${GONKAGATE_BASE_URL:-https://api.gonkagate.com/v1}
+      GONKAGATE_MODELS: ${GONKAGATE_MODELS:-moonshotai/kimi-k2.6,qwen/qwen3-235b-a22b-instruct-2507-fp8,minimaxai/minimax-m2.7}
+      GONKAGATE_API_KEY: ${GONKAGATE_API_KEY:-}
+      HYPERFUSION_BASE_URL: ${HYPERFUSION_BASE_URL:-https://api.hyperfusion.io/v1}
+      HYPERFUSION_API_KEY: ${HYPERFUSION_API_KEY:-}
+      GONKASCAN_BASE_URL: ${GONKASCAN_BASE_URL:-https://api.gonkascan.com/v1}
+      GONKASCAN_API_KEY: ${GONKASCAN_API_KEY:-}
+      BROKERS_CONFIG_PATH: ${BROKERS_CONFIG_PATH:-brokers.json}
+      BROKERS_CONFIG_JSON: ${BROKERS_CONFIG_JSON:-}
+      MIN_OUTPUT_TOKENS: ${MIN_OUTPUT_TOKENS:-10000}
+      PUBLIC_READ_ONLY: ${PUBLIC_READ_ONLY:-true}
+      RUN_PROBE_ON_STARTUP: ${RUN_PROBE_ON_STARTUP:-true}
+    volumes:
+      - gmeter-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  gmeter-data:
