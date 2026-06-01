@@ -219,9 +219,14 @@ export default function App() {
             limits: LIMITS_INTERVAL_MINUTES,
           })}
         </span>
-        <a href="https://proxy.gonka.gg" target="_blank" rel="noreferrer">
-          proxy.gonka.gg
-        </a>
+        <span className="footer-links">
+          <a href="https://github.com/gonkalabs/gmeter" target="_blank" rel="noreferrer">
+            {t("app.githubRepo")}
+          </a>
+          <a href="https://gonkalabs.com" target="_blank" rel="noreferrer">
+            {t("app.developers")}
+          </a>
+        </span>
       </footer>
     </div>
   );
