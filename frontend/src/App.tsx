@@ -88,19 +88,10 @@ export default function App() {
 
       <header className="topbar">
         <div className="topbar-inner">
-          <div className="brand">
-            <div className="brand-icon">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path
-                  d="M8 1.5L14.5 5v6L8 14.5 1.5 11V5L8 1.5z"
-                  stroke="currentColor"
-                  strokeWidth="1.2"
-                />
-                <circle cx="8" cy="8" r="2" fill="currentColor" />
-              </svg>
-            </div>
+          <div className="brand" aria-label="G meter">
+            <div className="brand-mark" aria-hidden="true">G</div>
             <div>
-              <div className="brand-name">G-Meter</div>
+              <div className="brand-name">meter</div>
               <div className="brand-tag">{t("app.tagline")}</div>
             </div>
           </div>

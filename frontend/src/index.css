@@ -21,6 +21,8 @@
   --max: 1080px;
   --topbar-bg: rgba(255, 255, 255, 0.85);
   --grid-line: rgba(0, 0, 0, 0.04);
+  --brand-mark-bg: #000000;
+  --brand-mark-fg: #ffffff;
 }
 
 [data-theme="dark"] {
@@ -40,6 +42,8 @@
   --chart-grid: #1f1f1f;
   --topbar-bg: rgba(0, 0, 0, 0.72);
   --grid-line: rgba(255, 255, 255, 0.03);
+  --brand-mark-bg: #ffffff;
+  --brand-mark-fg: #000000;
 }
 
 * {
@@ -135,23 +139,26 @@ a:hover {
   min-width: 0;
 }
 
-.brand-icon {
+.brand-mark {
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
+  border-radius: 9px;
+  background: var(--brand-mark-bg);
   display: grid;
   place-items: center;
-  color: var(--text);
+  color: var(--brand-mark-fg);
   flex-shrink: 0;
+  font-size: 23px;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .brand-name {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-size: 22px;
+  font-weight: 550;
+  letter-spacing: 0;
+  line-height: 0.9;
 }
 
 .brand-tag {

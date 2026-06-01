@@ -92,6 +92,31 @@ def _json_candidate(text: str) -> tuple[Any | None, str]:
     return None, cleaned
 
 
+def _completion_text(data: dict | None) -> str:
+    if not data:
+        return ""
+    content = ((data.get("choices") or [{}])[0].get("message") or {}).get("content")
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                parts.append(str(item.get("text") or ""))
+            else:
+                parts.append(str(item))
+        return "".join(parts)
+    return ""
+
+
+def _approx_output_tokens(data: dict | None, content: str) -> int:
+    usage = data.get("usage", {}) if data else {}
+    tokens = usage.get("completion_tokens")
+    if isinstance(tokens, int) and tokens > 0:
+        return tokens
+    return max(1, len(content.split()))
+
+
 def test_connectivity(client: GonkaClient) -> dict[str, Any]:
     probe = client.probe_endpoint()
     return _result(
@@ -121,6 +146,36 @@ def test_output_ladder(client: GonkaClient, model: str) -> list[dict[str, Any]]:
         }
         ttft, total, tokens, err, response, billing = client.stream_measure(body, timeout=120)
         if err and ttft is None:
+            if err == "empty stream":
+                data, elapsed, post_err, post_response, post_billing = client.post(body, timeout=120)
+                content = _completion_text(data)
+                if content:
+                    fallback_tokens = _approx_output_tokens(data, content)
+                    tps = round(fallback_tokens / elapsed, 2) if elapsed > 0 else 0
+                    results.append(
+                        _result(
+                            "output_ladder",
+                            True,
+                            latency_s=round(elapsed, 2),
+                            tps=tps,
+                            tokens_out=fallback_tokens,
+                            detail=_with_meta(
+                                {
+                                    "n": n,
+                                    "tps": tps,
+                                    "fallback": "non_stream",
+                                    "stream_error": err,
+                                    "stream_response": response,
+                                },
+                                response=post_response,
+                                request=_chat_request(body),
+                                billing=post_billing or billing,
+                            ),
+                        )
+                    )
+                    continue
+                if post_err:
+                    err = f"{err}; non-stream fallback failed: {post_err}"
             results.append(
                 _result(
                     "output_ladder",
