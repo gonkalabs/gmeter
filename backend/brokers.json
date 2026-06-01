@@ -43,8 +43,9 @@
       "base_url": "${HYPERFUSION_BASE_URL:-https://api.hyperfusion.io/v1}",
       "api_key": "${HYPERFUSION_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        { "id": "gonka/moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "gonka/Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
+        { "id": "gonka/MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     },
     {
