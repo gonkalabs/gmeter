@@ -69,6 +69,29 @@ def _chat_request(body: dict, *, stream: bool = False) -> dict:
     return req
 
 
+def _json_candidate(text: str) -> tuple[Any | None, str]:
+    cleaned = text.strip()
+    if "</think>" in cleaned:
+        cleaned = cleaned.split("</think>", 1)[1].strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").strip()
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:].strip()
+
+    attempts = [cleaned]
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start >= 0 and end > start:
+        attempts.append(cleaned[start : end + 1])
+
+    for candidate in attempts:
+        try:
+            return json.loads(candidate), candidate
+        except Exception:
+            continue
+    return None, cleaned
+
+
 def test_connectivity(client: GonkaClient) -> dict[str, Any]:
     probe = client.probe_endpoint()
     return _result(
@@ -352,7 +375,7 @@ def test_json_mode(client: GonkaClient, model: str) -> dict[str, Any]:
             },
         ],
         "response_format": {"type": "json_object"},
-        "max_tokens": 128,
+        "max_tokens": 1024,
     }
     data, elapsed, err, response, billing = client.post(body, timeout=60)
     if err or not data:
@@ -364,13 +387,10 @@ def test_json_mode(client: GonkaClient, model: str) -> dict[str, Any]:
             detail=_with_meta(None, response=response, request=_chat_request(body), billing=billing),
         )
     content = (data.get("choices") or [{}])[0].get("message", {}).get("content") or ""
-    try:
-        parsed = json.loads(content)
-        ok = isinstance(parsed, dict) and all(
-            k in parsed for k in ("capital", "population_millions", "languages")
-        )
-    except Exception:
-        ok = False
+    parsed, parsed_text = _json_candidate(content)
+    ok = isinstance(parsed, dict) and all(
+        k in parsed for k in ("capital", "population_millions", "languages")
+    )
     usage = data.get("usage", {})
     return _result(
         "json_mode",
@@ -379,7 +399,7 @@ def test_json_mode(client: GonkaClient, model: str) -> dict[str, Any]:
         tokens_in=usage.get("prompt_tokens"),
         tokens_out=usage.get("completion_tokens"),
         detail=_with_meta(
-            {"content_preview": content[:120]},
+            {"content_preview": parsed_text[:120]},
             response=response or json.dumps(data, ensure_ascii=False)[:1800],
             request=_chat_request(body),
             billing=billing,

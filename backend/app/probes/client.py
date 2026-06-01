@@ -95,14 +95,19 @@ class GonkaClient:
                         error_body = resp.read().decode()[:1800]
                         return None, time.time() - t0, 0, f"HTTP {resp.status_code}: {error_body[:300]}", error_body, None
                     for line in resp.iter_lines():
-                        if not line.startswith("data: ") or line == "data: [DONE]":
+                        if not line.startswith("data:"):
+                            continue
+                        payload_text = line[5:].strip()
+                        if payload_text == "[DONE]":
                             continue
                         try:
-                            chunk = json.loads(line[6:])
+                            chunk = json.loads(payload_text)
+                            delta = chunk.get("choices", [{}])[0].get("delta", {}) or {}
                             content = (
-                                chunk.get("choices", [{}])[0]
-                                .get("delta", {})
-                                .get("content", "")
+                                delta.get("content")
+                                or delta.get("reasoning")
+                                or delta.get("reasoning_content")
+                                or ""
                             )
                             if content:
                                 if ttft is None:
