@@ -7,9 +7,10 @@ import {
   healthLabel,
   metricMeta,
   streamNote,
+  type Tone,
   toneForMetric,
 } from "../metrics";
-import { useI18n } from "../i18n";
+import { useI18n, type TranslationKey } from "../i18n";
 import { hostFromUrl } from "../brokerLinks";
 import { ProbeLogTable } from "./ProbeLogTable";
 
@@ -273,42 +274,46 @@ function ModelDetail({
       </div>
 
       {tab === "summary" ? (
-        <div className="model-summary-table" role="table" aria-label={t("providers.summary")}>
-          <div className="model-summary-head" role="row">
-            <span>{t("providers.metric")}</span>
-            <span>{t("providers.value")}</span>
-            <span>{t("logs.status")}</span>
-            <span>{t("providers.logs")}</span>
+        <div className="model-summary-stack">
+          <ModelDiagnostics metrics={model.metrics} />
+
+          <div className="model-summary-table" role="table" aria-label={t("providers.summary")}>
+            <div className="model-summary-head" role="row">
+              <span>{t("providers.metric")}</span>
+              <span>{t("providers.value")}</span>
+              <span>{t("logs.status")}</span>
+              <span>{t("providers.logs")}</span>
+            </div>
+            {model.metrics.map((metric) => {
+              const meta = metricMeta(metric.key, t);
+              const tone = toneForMetric(metric);
+              const note = streamNote(metric, t);
+              return (
+                <button
+                  type="button"
+                  key={metric.key}
+                  className={`model-summary-row tone-${tone}`}
+                  onClick={() => openLogs(metric)}
+                  title={meta?.help}
+                  role="row"
+                >
+                  <span className="model-summary-metric" role="cell">
+                    {meta?.label ?? metric.label}
+                  </span>
+                  <span className="model-summary-value" role="cell">
+                    {displayMetricValue(metric)}
+                    {note && <small>{note}</small>}
+                  </span>
+                  <span className={`health-badge tone-${tone}`} role="cell">
+                    {healthLabel(tone, t)}
+                  </span>
+                  <span className="model-summary-logs" role="cell">
+                    {metric.logs.length}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          {model.metrics.map((metric) => {
-            const meta = metricMeta(metric.key, t);
-            const tone = toneForMetric(metric);
-            const note = streamNote(metric, t);
-            return (
-              <button
-                type="button"
-                key={metric.key}
-                className={`model-summary-row tone-${tone}`}
-                onClick={() => openLogs(metric)}
-                title={meta?.help}
-                role="row"
-              >
-                <span className="model-summary-metric" role="cell">
-                  {meta?.label ?? metric.label}
-                </span>
-                <span className="model-summary-value" role="cell">
-                  {displayMetricValue(metric)}
-                  {note && <small>{note}</small>}
-                </span>
-                <span className={`health-badge tone-${tone}`} role="cell">
-                  {healthLabel(tone, t)}
-                </span>
-                <span className="model-summary-logs" role="cell">
-                  {metric.logs.length}
-                </span>
-              </button>
-            );
-          })}
         </div>
       ) : (
         <div className="model-logs-tab">
@@ -356,4 +361,139 @@ function ModelDetail({
       )}
     </div>
   );
+}
+
+interface Percentiles {
+  p50?: number;
+  p75?: number;
+  p90?: number;
+  p99?: number;
+}
+
+interface ErrorBucket {
+  category: string;
+  count: number;
+  tests?: string[];
+}
+
+interface CapabilityBucket {
+  capability: string;
+  passed: number;
+  total: number;
+  pct: number;
+}
+
+function ModelDiagnostics({ metrics }: { metrics: MetricBlock[] }) {
+  const { t } = useI18n();
+  const raw = metrics[0]?.raw ?? {};
+  const latency = raw.latency_percentiles as Percentiles | undefined;
+  const ttft = raw.ttft_percentiles as Percentiles | undefined;
+  const stream = raw.stream_speed_percentiles as Percentiles | undefined;
+  const errors = (raw.error_breakdown ?? []) as ErrorBucket[];
+  const capabilities = (raw.capability_matrix ?? []) as CapabilityBucket[];
+  const streamSuccess = numberOrNull(raw.stream_success_pct);
+
+  return (
+    <div className="model-diagnostics">
+      <section className="diagnostic-panel">
+        <h3>{t("diagnostics.performance")}</h3>
+        <div className="diagnostic-kpis">
+          <DiagnosticKpi label={t("metrics.latency.label")} value={formatPair(latency, "s")} />
+          <DiagnosticKpi label={t("measurements.ttft")} value={formatPair(ttft, "s")} />
+          <DiagnosticKpi label={t("measurements.streamSpeed")} value={formatPair(stream, " tps")} />
+          <DiagnosticKpi
+            label={t("diagnostics.streamSuccess")}
+            value={streamSuccess == null ? "—" : `${streamSuccess}%`}
+          />
+        </div>
+      </section>
+
+      <section className="diagnostic-panel">
+        <h3>{t("diagnostics.errors")}</h3>
+        {errors.length === 0 ? (
+          <p className="diagnostic-empty">{t("diagnostics.noErrors")}</p>
+        ) : (
+          <div className="error-breakdown-list">
+            {errors.map((item) => (
+              <span className="error-breakdown-pill" key={item.category}>
+                <strong>{t(errorCategoryKey(item.category))}</strong>
+                <span>{item.count}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="diagnostic-panel diagnostic-panel-wide">
+        <h3>{t("diagnostics.compatibility")}</h3>
+        {capabilities.length === 0 ? (
+          <p className="diagnostic-empty">{t("diagnostics.noCapabilities")}</p>
+        ) : (
+          <div className="capability-matrix">
+            {capabilities.map((item) => {
+              const tone = capabilityTone(item.pct);
+              return (
+                <div className="capability-row" key={item.capability}>
+                  <span>{t(capabilityKey(item.capability))}</span>
+                  <strong>{item.passed}/{item.total}</strong>
+                  <span className={`health-badge tone-${tone}`}>{Math.round(item.pct)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function DiagnosticKpi({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="diagnostic-kpi">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function numberOrNull(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function formatPair(stats: Percentiles | undefined, suffix: string): string {
+  if (!stats || stats.p50 == null || stats.p90 == null) return "—";
+  return `${stats.p50}${suffix} / ${stats.p90}${suffix}`;
+}
+
+function capabilityTone(pct: number): Tone {
+  if (pct >= 95) return "good";
+  if (pct >= 70) return "neutral";
+  return "warn";
+}
+
+function capabilityKey(capability: string): TranslationKey {
+  const keys: Record<string, TranslationKey> = {
+    streaming: "diagnostics.cap.streaming",
+    input: "diagnostics.cap.input",
+    json: "diagnostics.cap.json",
+    tools: "diagnostics.cap.tools",
+    vision: "diagnostics.cap.vision",
+  };
+  return keys[capability] ?? "diagnostics.cap.unknown";
+}
+
+function errorCategoryKey(category: string): TranslationKey {
+  const keys: Record<string, TranslationKey> = {
+    empty_stream: "diagnostics.err.empty_stream",
+    stream_error: "diagnostics.err.stream_error",
+    timeout: "diagnostics.err.timeout",
+    rate_limited: "diagnostics.err.rate_limited",
+    auth_or_config: "diagnostics.err.auth_or_config",
+    bad_request: "diagnostics.err.bad_request",
+    upstream_5xx: "diagnostics.err.upstream_5xx",
+    capability_mismatch: "diagnostics.err.capability_mismatch",
+    other: "diagnostics.err.other",
+    unknown: "diagnostics.err.unknown",
+  };
+  return keys[category] ?? "diagnostics.err.other";
 }

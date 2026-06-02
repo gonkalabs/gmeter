@@ -44,7 +44,7 @@ export interface MetricBlock {
   key: string;
   label: string;
   value: string;
-  raw: Record<string, number>;
+  raw: Record<string, any>;
   logs: MeasurementLog[];
 }
 

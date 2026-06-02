@@ -1,4 +1,6 @@
 import json
+import math
+import re
 from typing import Any
 
 from app.probes.constants import REAL_WORLD_TESTS
@@ -168,6 +170,121 @@ def metric_matches(metric_key: str, row: dict[str, Any]) -> bool:
     return row["test_name"] in tests
 
 
+def _percentile(values: list[float], pct: float) -> float:
+    clean = sorted(v for v in values if v is not None)
+    if not clean:
+        return 0.0
+    if len(clean) == 1:
+        return round(clean[0], 2)
+
+    position = (len(clean) - 1) * pct
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return round(clean[int(position)], 2)
+    weight = position - lower
+    return round(clean[lower] * (1 - weight) + clean[upper] * weight, 2)
+
+
+def _percentiles(values: list[float]) -> dict[str, float]:
+    return {
+        "p50": _percentile(values, 0.50),
+        "p75": _percentile(values, 0.75),
+        "p90": _percentile(values, 0.90),
+        "p99": _percentile(values, 0.99),
+    }
+
+
+def _error_category(row: dict[str, Any]) -> str:
+    error = str(row.get("error") or "").lower()
+    if not error:
+        return "unknown"
+    if "empty stream" in error:
+        return "empty_stream"
+    if "mid-stream" in error or "stream" in error and "error" in error:
+        return "stream_error"
+    if "timed out" in error or "timeout" in error or "read operation timed out" in error:
+        return "timeout"
+
+    match = re.search(r"http\s+(\d{3})", error)
+    if match:
+        status = int(match.group(1))
+        if status == 429:
+            return "rate_limited"
+        if status in (401, 402, 403, 404):
+            return "auth_or_config"
+        if status in (400, 413):
+            return "bad_request"
+        if status >= 500:
+            return "upstream_5xx"
+
+    if "invalid json" in error or "no tool_calls" in error or "wrong:" in error:
+        return "capability_mismatch"
+    return "other"
+
+
+def _error_breakdown(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    counts: dict[str, int] = {}
+    tests: dict[str, set[str]] = {}
+    for row in rows:
+        if row["test_name"] == "pricing_probe" or row["ok"]:
+            continue
+        category = _error_category(row)
+        counts[category] = counts.get(category, 0) + 1
+        tests.setdefault(category, set()).add(row["test_name"])
+
+    return [
+        {"category": category, "count": count, "tests": sorted(tests.get(category, set()))}
+        for category, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    ]
+
+
+def _test_breakdown(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    tests: dict[str, dict[str, int]] = {}
+    for row in rows:
+        if row["test_name"] == "pricing_probe":
+            continue
+        item = tests.setdefault(row["test_name"], {"total": 0, "passed": 0})
+        item["total"] += 1
+        if row["ok"]:
+            item["passed"] += 1
+
+    return [
+        {
+            "test": test,
+            "passed": item["passed"],
+            "total": item["total"],
+            "pct": round(100 * item["passed"] / item["total"], 1) if item["total"] else 0,
+        }
+        for test, item in sorted(tests.items())
+    ]
+
+
+def _capability_matrix(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups = [
+        ("streaming", {"output_ladder"}),
+        ("input", {"input_ladder"}),
+        ("json", {"json_mode"}),
+        ("tools", {"tool_calling"}),
+        ("vision", {"multimodality"}),
+    ]
+    matrix: list[dict[str, Any]] = []
+    for name, tests in groups:
+        scoped = [row for row in rows if row["test_name"] in tests]
+        if not scoped:
+            continue
+        passed = sum(1 for row in scoped if row["ok"])
+        matrix.append(
+            {
+                "capability": name,
+                "passed": passed,
+                "total": len(scoped),
+                "pct": round(100 * passed / len(scoped), 1),
+            }
+        )
+    return matrix
+
+
 def compute_metric_values(
     rows: list[dict[str, Any]],
     *,
@@ -185,10 +302,21 @@ def compute_metric_values(
         return {
             "api_uptime_pct": 0.0,
             "latency_s": 0,
+            "latency_percentiles": _percentiles([]),
+            "ttft_percentiles": _percentiles([]),
             "failed_probes_pct": 0,
+            "failed_probes": 0,
+            "error_breakdown": [],
+            "top_error_category": None,
+            "test_breakdown": [],
             "output_speed_tps": 0,
+            "output_speed_percentiles": _percentiles([]),
             "stream_speed_tps": 0,
+            "stream_speed_percentiles": _percentiles([]),
+            "stream_success_pct": 0,
+            "output_success_pct": 0,
             "real_world_gen_pct": 0,
+            "capability_matrix": [],
             **base,
             "total_tokens": 0,
             "total_probes": 0,
@@ -203,24 +331,48 @@ def compute_metric_values(
     real_world = [r for r in metered_rows if r["test_name"] in REAL_WORLD_TESTS]
     total = len(metered_rows)
     failed = sum(1 for r in metered_rows if not r["ok"])
+    output_rows = [r for r in metered_rows if r["test_name"] in {"output_ladder", "max_output"}]
+    stream_rows = [r for r in metered_rows if r["test_name"] == "output_ladder"]
     total_tokens = sum(
         (r.get("tokens_in") or 0) + (r.get("tokens_out") or 0)
         for r in metered_rows
     )
+    errors = _error_breakdown(metered_rows)
 
     return {
         "api_uptime_pct": round(100.0 if connectivity and connectivity["ok"] else 0.0, 1),
         "latency_s": round(sum(latencies) / len(latencies), 2) if latencies else 0,
+        "latency_percentiles": _percentiles(latencies),
+        "ttft_percentiles": _percentiles(
+            [r["ttft_s"] for r in metered_rows if r.get("ttft_s") is not None]
+        ),
         "failed_probes_pct": round(100 * failed / total, 1) if total else 0,
+        "failed_probes": failed,
+        "error_breakdown": errors,
+        "top_error_category": errors[0]["category"] if errors else None,
+        "test_breakdown": _test_breakdown(metered_rows),
         "output_speed_tps": round(sum(output_speeds) / len(output_speeds), 2)
         if output_speeds
         else 0,
+        "output_speed_percentiles": _percentiles(output_speeds),
         "stream_speed_tps": round(sum(stream_speeds) / len(stream_speeds), 2)
         if stream_speeds
+        else 0,
+        "stream_speed_percentiles": _percentiles(stream_speeds),
+        "stream_success_pct": round(
+            100 * sum(1 for r in stream_rows if r["ok"]) / len(stream_rows), 1
+        )
+        if stream_rows
+        else 0,
+        "output_success_pct": round(
+            100 * sum(1 for r in output_rows if r["ok"]) / len(output_rows), 1
+        )
+        if output_rows
         else 0,
         "real_world_gen_pct": round(100 * sum(1 for r in real_world if r["ok"]) / len(real_world), 1)
         if real_world
         else 0,
+        "capability_matrix": _capability_matrix(metered_rows),
         **base,
         "total_tokens": total_tokens,
         "total_probes": total,
