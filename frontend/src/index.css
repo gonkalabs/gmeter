@@ -1105,6 +1105,10 @@ a:hover {
   overflow: hidden;
 }
 
+.price-panel:has(.price-visual-body) {
+  overflow: visible;
+}
+
 .price-collapsed-toggle {
   display: flex;
   align-items: center;
@@ -1595,8 +1599,10 @@ a:hover {
   transform: translateX(-50%);
 }
 
+.price-ladder-gonka-wrap .price-tooltip,
 .price-ladder-dot-wrap .price-tooltip {
-  bottom: calc(100% + 6px);
+  top: calc(100% + 8px);
+  bottom: auto;
 }
 
 .price-ladder-dot {
@@ -1657,7 +1663,7 @@ a:hover {
   gap: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .price-ladder-head {
@@ -1665,7 +1671,9 @@ a:hover {
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   padding: 8px 14px;
+  border: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   background: var(--bg-subtle);
   color: var(--text-tertiary);
   font-size: 10px;
@@ -1684,11 +1692,20 @@ a:hover {
   gap: 12px;
   align-items: center;
   padding: 8px 14px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border: 1px solid var(--border);
+  border-top: none;
+  background: var(--surface);
+  overflow: visible;
 }
 
 .price-ladder-row:last-child {
-  border-bottom: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.price-ladder-row .price-hover-target:hover,
+.price-ladder-row .price-hover-target:focus-within {
+  z-index: 12;
 }
 
 .price-ladder-name {
@@ -1704,6 +1721,7 @@ a:hover {
   gap: 8px;
   align-items: center;
   min-width: 0;
+  overflow: visible;
 }
 
 .price-ladder-metric.tone-good .price-ladder-value {
