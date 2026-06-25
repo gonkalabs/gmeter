@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { api } from "../api";
 import type { DashboardDetail, ModelPriceComparison, PricingComparison } from "../types";
 import { useI18n, type TFunction } from "../i18n";
@@ -43,6 +43,19 @@ interface TrackDomain {
   min: number;
   max: number;
   ticks: number[];
+}
+
+interface ScaleMarker {
+  id: string;
+  value: number;
+  title: string;
+  hint?: string;
+}
+
+interface PriceTooltipContent {
+  title: string;
+  value?: string;
+  hint?: string;
 }
 
 export function PriceComparison({ detail }: Props) {
@@ -320,22 +333,18 @@ function ModelPriceVisual({ stats }: { stats: ModelPricingStats }) {
             domain={outputDomain}
             gonkaLow={gonkaRange?.output.low ?? null}
             gonkaHigh={gonkaRange?.output.high ?? null}
+            gonkaBrokers={gonkaRange?.brokers ?? null}
             median={outputMedian}
-            markers={outputValues.map((value, index) => ({
-              id: `out-${index}-${value}`,
-              value,
-            }))}
+            markers={buildSpectrumMarkers(competitors, "output", t)}
           />
           <PriceSpectrum
             label={t("pricing.inputShort")}
             domain={inputDomain}
             gonkaLow={gonkaRange?.input.low ?? null}
             gonkaHigh={gonkaRange?.input.high ?? null}
+            gonkaBrokers={gonkaRange?.brokers ?? null}
             median={inputMedian}
-            markers={inputValues.map((value, index) => ({
-              id: `in-${index}-${value}`,
-              value,
-            }))}
+            markers={buildSpectrumMarkers(competitors, "input", t)}
           />
 
           <div className="price-ladder-wrap">
@@ -373,7 +382,7 @@ function ModelPriceVisual({ stats }: { stats: ModelPricingStats }) {
                 gonkaOutputLow={gonkaRange?.output.low ?? null}
                 gonkaOutputHigh={gonkaRange?.output.high ?? null}
                 tone="market"
-                title={
+                marketHint={
                   row.isVariant
                     ? `${row.modelId} · ${t("pricing.note.marketVariant")}`
                     : t("pricing.note.marketExact")
@@ -410,11 +419,65 @@ function StatChip({
   );
 }
 
+function PriceHoverTarget({
+  className,
+  style,
+  tooltip,
+  children,
+}: {
+  className?: string;
+  style?: CSSProperties;
+  tooltip: PriceTooltipContent;
+  children?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className={`price-hover-target ${className ?? ""}`.trim()}
+      style={style}
+      tabIndex={0}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      {children}
+      {open && (
+        <div className="price-tooltip" role="tooltip">
+          <strong>{tooltip.title}</strong>
+          {tooltip.value && <span>{tooltip.value}</span>}
+          {tooltip.hint && <em>{tooltip.hint}</em>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildSpectrumMarkers(
+  competitors: CompetitorRow[],
+  kind: "input" | "output",
+  t: TFunction
+): ScaleMarker[] {
+  return competitors
+    .filter((row) => (kind === "input" ? row.inputPerM : row.outputPerM) != null)
+    .map((row) => {
+      const value = (kind === "input" ? row.inputPerM : row.outputPerM)!;
+      return {
+        id: `${row.key}-${kind}`,
+        value,
+        title: `${row.provider}${row.isVariant ? "*" : ""}`,
+        hint: row.isVariant ? t("pricing.note.marketVariant") : t("pricing.note.marketExact"),
+      };
+    });
+}
+
 function PriceSpectrum({
   label,
   domain,
   gonkaLow,
   gonkaHigh,
+  gonkaBrokers,
   median,
   markers,
 }: {
@@ -422,8 +485,9 @@ function PriceSpectrum({
   domain: TrackDomain;
   gonkaLow: number | null;
   gonkaHigh: number | null;
+  gonkaBrokers: number | null;
   median: number | null;
-  markers: Array<{ id: string; value: number }>;
+  markers: ScaleMarker[];
 }) {
   const { t } = useI18n();
   const gonkaStart = gonkaLow != null ? toPercent(gonkaLow, domain.min, domain.max) : null;
@@ -438,33 +502,55 @@ function PriceSpectrum({
           <span className="price-spectrum-bound is-min">{formatUsd(domain.min)}</span>
           <div className="price-spectrum-track">
             <div className="price-spectrum-rail" />
-            {gonkaStart != null && gonkaEnd != null && (
-              <div
-                className="price-spectrum-gonka"
+            {gonkaStart != null && gonkaEnd != null && gonkaLow != null && gonkaHigh != null && (
+              <PriceHoverTarget
+                className="price-spectrum-gonka-wrap"
                 style={{
                   left: `${Math.min(gonkaStart, gonkaEnd)}%`,
                   width: `${Math.max(gonkaEnd - gonkaStart, 0.8)}%`,
                 }}
-                title={t("pricing.gonkaBrokers")}
-              />
+                tooltip={{
+                  title: t("pricing.gonkaBrokers"),
+                  value: formatUsdRange(gonkaLow, gonkaHigh),
+                  hint: gonkaBrokers
+                    ? t("pricing.note.gonkaRange", { count: gonkaBrokers })
+                    : t("pricing.note.gonka"),
+                }}
+              >
+                <div className="price-spectrum-gonka" />
+              </PriceHoverTarget>
             )}
-            {medianX != null && (
+            {medianX != null && median != null && (
               <>
-                <div className="price-spectrum-median-line" style={{ left: `${medianX}%` }} />
-                {median != null && (
-                  <span className="price-spectrum-median" style={{ left: `${medianX}%` }}>
+                <PriceHoverTarget
+                  className="price-spectrum-median-wrap"
+                  style={{ left: `${medianX}%` }}
+                  tooltip={{
+                    title: t("pricing.visual.median"),
+                    value: formatUsd(median),
+                    hint: t("pricing.visual.marketProviders"),
+                  }}
+                >
+                  <div className="price-spectrum-median-line" />
+                  <span className="price-spectrum-median">
                     {t("pricing.visual.median")} {formatUsd(median)}
                   </span>
-                )}
+                </PriceHoverTarget>
               </>
             )}
             {markers.map((marker) => (
-              <div
+              <PriceHoverTarget
                 key={marker.id}
-                className="price-spectrum-tick"
+                className="price-spectrum-tick-wrap"
                 style={{ left: `${toPercent(marker.value, domain.min, domain.max)}%` }}
-                title={formatUsd(marker.value)}
-              />
+                tooltip={{
+                  title: marker.title,
+                  value: formatUsd(marker.value),
+                  hint: marker.hint,
+                }}
+              >
+                <div className="price-spectrum-tick" />
+              </PriceHoverTarget>
             ))}
           </div>
           <span className="price-spectrum-bound is-max">{formatUsd(domain.max)}</span>
@@ -480,15 +566,18 @@ function LadderMetricCell({
   gonkaLow,
   gonkaHigh,
   tone,
+  dotTooltip,
+  gonkaTooltip,
 }: {
   value: number | null;
   domain: TrackDomain;
   gonkaLow: number | null;
   gonkaHigh: number | null;
   tone: "good" | "market";
+  dotTooltip: PriceTooltipContent;
+  gonkaTooltip: PriceTooltipContent | null;
 }) {
-  const dotX =
-    value != null ? toPercent(value, domain.min, domain.max) : null;
+  const dotX = value != null ? toPercent(value, domain.min, domain.max) : null;
   const gonkaStart = gonkaLow != null ? toPercent(gonkaLow, domain.min, domain.max) : null;
   const gonkaEnd = gonkaHigh != null ? toPercent(gonkaHigh, domain.min, domain.max) : null;
 
@@ -499,17 +588,30 @@ function LadderMetricCell({
       </span>
       <div className="price-ladder-track">
         <div className="price-ladder-rail" />
-        {gonkaStart != null && gonkaEnd != null && (
-          <div
-            className="price-ladder-gonka"
-            style={{
-              left: `${Math.min(gonkaStart, gonkaEnd)}%`,
-              width: `${Math.max(gonkaEnd - gonkaStart, 1)}%`,
-            }}
-          />
-        )}
+        {gonkaStart != null &&
+          gonkaEnd != null &&
+          gonkaTooltip &&
+          gonkaLow != null &&
+          gonkaHigh != null && (
+            <PriceHoverTarget
+              className="price-ladder-gonka-wrap"
+              style={{
+                left: `${Math.min(gonkaStart, gonkaEnd)}%`,
+                width: `${Math.max(gonkaEnd - gonkaStart, 1)}%`,
+              }}
+              tooltip={gonkaTooltip}
+            >
+              <div className="price-ladder-gonka" />
+            </PriceHoverTarget>
+          )}
         {dotX != null && (
-          <div className={`price-ladder-dot tone-${tone}`} style={{ left: `${dotX}%` }} />
+          <PriceHoverTarget
+            className="price-ladder-dot-wrap"
+            style={{ left: `${dotX}%` }}
+            tooltip={dotTooltip}
+          >
+            <div className={`price-ladder-dot tone-${tone}`} />
+          </PriceHoverTarget>
         )}
       </div>
     </div>
@@ -527,7 +629,7 @@ function PriceLadderRow({
   gonkaOutputLow,
   gonkaOutputHigh,
   tone,
-  title,
+  marketHint,
 }: {
   label: string;
   inputValue: number | null;
@@ -539,10 +641,29 @@ function PriceLadderRow({
   gonkaOutputLow: number | null;
   gonkaOutputHigh: number | null;
   tone: "good" | "market";
-  title?: string;
+  marketHint?: string;
 }) {
+  const { t } = useI18n();
+
+  const gonkaInputTooltip =
+    gonkaInputLow != null && gonkaInputHigh != null
+      ? {
+          title: t("pricing.gonkaBrokers"),
+          value: formatUsdRange(gonkaInputLow, gonkaInputHigh),
+          hint: t("pricing.inputShort"),
+        }
+      : null;
+  const gonkaOutputTooltip =
+    gonkaOutputLow != null && gonkaOutputHigh != null
+      ? {
+          title: t("pricing.gonkaBrokers"),
+          value: formatUsdRange(gonkaOutputLow, gonkaOutputHigh),
+          hint: t("pricing.outputShort"),
+        }
+      : null;
+
   return (
-    <div className={`price-ladder-row tone-${tone}`} title={title}>
+    <div className={`price-ladder-row tone-${tone}`}>
       <span className="price-ladder-name">{label}</span>
       <LadderMetricCell
         value={inputValue}
@@ -550,6 +671,12 @@ function PriceLadderRow({
         gonkaLow={gonkaInputLow}
         gonkaHigh={gonkaInputHigh}
         tone={tone}
+        gonkaTooltip={gonkaInputTooltip}
+        dotTooltip={{
+          title: label,
+          value: inputValue != null ? formatUsd(inputValue) : undefined,
+          hint: tone === "market" ? marketHint : t("pricing.inputShort"),
+        }}
       />
       <LadderMetricCell
         value={outputValue}
@@ -557,6 +684,12 @@ function PriceLadderRow({
         gonkaLow={gonkaOutputLow}
         gonkaHigh={gonkaOutputHigh}
         tone={tone}
+        gonkaTooltip={gonkaOutputTooltip}
+        dotTooltip={{
+          title: label,
+          value: outputValue != null ? formatUsd(outputValue) : undefined,
+          hint: tone === "market" ? marketHint : t("pricing.outputShort"),
+        }}
       />
     </div>
   );

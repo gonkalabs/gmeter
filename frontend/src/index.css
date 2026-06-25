@@ -1421,9 +1421,123 @@ a:hover {
   text-align: left;
 }
 
-.price-spectrum-median {
+.price-spectrum-track {
+  position: relative;
+  height: 28px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.price-spectrum-rail {
+  position: absolute;
+  inset: 10px 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 85%, transparent);
+  pointer-events: none;
+}
+
+.price-hover-target {
+  position: absolute;
+  z-index: 1;
+  cursor: help;
+  outline: none;
+}
+
+.price-hover-target:focus-visible .price-spectrum-tick,
+.price-hover-target:focus-visible .price-ladder-dot,
+.price-hover-target:hover .price-spectrum-tick,
+.price-hover-target:hover .price-ladder-dot {
+  background: var(--accent);
+}
+
+.price-hover-target:hover .price-spectrum-gonka,
+.price-hover-target:focus-visible .price-spectrum-gonka {
+  background: color-mix(in srgb, var(--good) 42%, transparent);
+  border-color: var(--good);
+}
+
+.price-hover-target:hover .price-ladder-gonka,
+.price-hover-target:focus-visible .price-ladder-gonka {
+  background: color-mix(in srgb, var(--good) 45%, transparent);
+}
+
+.price-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.14);
+  transform: translateX(-50%);
+  pointer-events: none;
+  white-space: normal;
+}
+
+.price-tooltip strong {
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.price-tooltip span {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.price-tooltip em {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.price-spectrum-gonka-wrap {
+  top: 6px;
+  height: 16px;
+}
+
+.price-spectrum-gonka-wrap .price-tooltip {
+  bottom: calc(100% + 10px);
+}
+
+.price-spectrum-gonka {
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--good) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--good) 50%, transparent);
+}
+
+.price-spectrum-median-wrap {
+  top: 0;
+  width: 14px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+.price-spectrum-median-wrap .price-spectrum-median-line {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 50%;
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  transform: translateX(-50%);
+}
+
+.price-spectrum-median-wrap .price-spectrum-median {
   position: absolute;
   top: -2px;
+  left: 50%;
   transform: translate(-50%, -100%);
   padding: 1px 6px;
   border-radius: 999px;
@@ -1435,45 +1549,82 @@ a:hover {
   white-space: nowrap;
 }
 
-.price-spectrum-track {
-  position: relative;
-  height: 28px;
-  min-width: 0;
-}
-
-.price-spectrum-rail {
-  position: absolute;
-  inset: 10px 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border) 85%, transparent);
-}
-
-.price-spectrum-gonka {
-  position: absolute;
-  top: 6px;
-  height: 16px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--good) 30%, transparent);
-  border: 1px solid color-mix(in srgb, var(--good) 50%, transparent);
-}
-
-.price-spectrum-median-line {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  width: 0;
-  border-left: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+.price-spectrum-tick-wrap {
+  top: 0;
+  width: 12px;
+  height: 100%;
   transform: translateX(-50%);
 }
 
 .price-spectrum-tick {
   position: absolute;
   top: 5px;
+  left: 50%;
   width: 2px;
   height: 18px;
   border-radius: 1px;
   background: color-mix(in srgb, var(--text-secondary) 45%, transparent);
   transform: translateX(-50%);
+  transition: background 0.12s ease;
+}
+
+.price-ladder-track {
+  position: relative;
+  height: 12px;
+  min-width: 0;
+  overflow: visible;
+}
+
+.price-ladder-gonka-wrap {
+  top: 2px;
+  height: 8px;
+}
+
+.price-ladder-gonka {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--good) 32%, transparent);
+  border: 1px solid color-mix(in srgb, var(--good) 45%, transparent);
+}
+
+.price-ladder-dot-wrap {
+  top: 0;
+  width: 14px;
+  height: 12px;
+  transform: translateX(-50%);
+}
+
+.price-ladder-dot-wrap .price-tooltip {
+  bottom: calc(100% + 6px);
+}
+
+.price-ladder-dot {
+  position: absolute;
+  top: 1px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  transform: translateX(-50%);
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.price-ladder-dot.tone-good {
+  background: var(--good);
+}
+
+.price-ladder-dot.tone-market {
+  background: color-mix(in srgb, var(--text-secondary) 75%, transparent);
+}
+
+.price-ladder-rail {
+  position: absolute;
+  inset: 4px 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+  pointer-events: none;
 }
 
 .price-spectrum-axis {
@@ -1557,46 +1708,6 @@ a:hover {
 
 .price-ladder-metric.tone-good .price-ladder-value {
   color: var(--good);
-}
-
-.price-ladder-track {
-  position: relative;
-  height: 12px;
-  min-width: 0;
-}
-
-.price-ladder-rail {
-  position: absolute;
-  inset: 4px 0;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--border) 80%, transparent);
-}
-
-.price-ladder-gonka {
-  position: absolute;
-  top: 2px;
-  height: 8px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--good) 32%, transparent);
-  border: 1px solid color-mix(in srgb, var(--good) 45%, transparent);
-}
-
-.price-ladder-dot {
-  position: absolute;
-  top: 1px;
-  width: 10px;
-  height: 10px;
-  border: 2px solid var(--surface);
-  border-radius: 999px;
-  transform: translateX(-50%);
-}
-
-.price-ladder-dot.tone-good {
-  background: var(--good);
-}
-
-.price-ladder-dot.tone-market {
-  background: color-mix(in srgb, var(--text-secondary) 75%, transparent);
 }
 
 .price-ladder-value {
