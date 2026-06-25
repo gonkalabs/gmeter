@@ -137,3 +137,159 @@ class GonkaClient:
             return ttft, time.time() - t0, token_count, None, response, billing
         except Exception as e:
             return ttft, time.time() - t0, token_count, str(e)[:150], error_body, None
+
+    def stream_completion(
+        self, payload: dict, timeout: float | None = None
+    ) -> tuple[
+        float | None,
+        float,
+        int,
+        int | None,
+        str | None,
+        str | None,
+        dict[str, Any] | None,
+    ]:
+        """Measure a long streamed completion without storing the full response."""
+        url = f"{self.base_url}/chat/completions"
+        t0 = time.time()
+        ttft: float | None = None
+        chunk_count = 0
+        char_count = 0
+        word_count = 0
+        sample_parts: list[str] = []
+        finish_reason: str | None = None
+        usage: dict[str, Any] | None = None
+        error_body: str | None = None
+        response_headers: httpx.Headers | None = None
+        try:
+            with httpx.Client(timeout=timeout or self.timeout) as client:
+                with client.stream(
+                    "POST",
+                    url,
+                    headers=self._headers(),
+                    json={**payload, "stream": True},
+                ) as resp:
+                    response_headers = resp.headers
+                    if resp.status_code >= 400:
+                        error_body = resp.read().decode()[:1800]
+                        return (
+                            None,
+                            time.time() - t0,
+                            0,
+                            None,
+                            f"HTTP {resp.status_code}: {error_body[:300]}",
+                            error_body,
+                            None,
+                        )
+                    for line in resp.iter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        payload_text = line[5:].strip()
+                        if payload_text == "[DONE]":
+                            continue
+                        try:
+                            chunk = json.loads(payload_text)
+                        except Exception:
+                            continue
+
+                        if isinstance(chunk.get("error"), dict):
+                            error_body = json.dumps(chunk, ensure_ascii=False)[:1800]
+                            message = chunk["error"].get("message") or error_body
+                            return (
+                                ttft,
+                                time.time() - t0,
+                                0,
+                                None,
+                                str(message)[:300],
+                                error_body,
+                                None,
+                            )
+
+                        if isinstance(chunk.get("usage"), dict):
+                            usage = chunk["usage"]
+
+                        choices = chunk.get("choices") or []
+                        if not choices:
+                            continue
+                        choice = choices[0] or {}
+                        finish_reason = choice.get("finish_reason") or finish_reason
+                        delta = choice.get("delta") or {}
+                        message = choice.get("message") or {}
+                        content = (
+                            delta.get("content")
+                            or delta.get("reasoning")
+                            or delta.get("reasoning_content")
+                            or message.get("content")
+                            or ""
+                        )
+                        if isinstance(content, list):
+                            content = "".join(
+                                str(item.get("text") or "") if isinstance(item, dict) else str(item)
+                                for item in content
+                            )
+                        if not content:
+                            continue
+                        if ttft is None:
+                            ttft = time.time() - t0
+                        chunk_count += 1
+                        content = str(content)
+                        char_count += len(content)
+                        word_count += len(content.split())
+                        if len("".join(sample_parts)) < 1800:
+                            sample_parts.append(content)
+
+            usage_completion = usage.get("completion_tokens") if usage else None
+            usage_prompt = usage.get("prompt_tokens") if usage else None
+            if isinstance(usage_completion, int) and usage_completion > 0:
+                tokens_out = usage_completion
+                token_source = "usage"
+            else:
+                tokens_out = max(word_count, round(char_count / 4)) if char_count else 0
+                token_source = "approx_chars"
+
+            response = json.dumps(
+                {
+                    "stream": True,
+                    "tokens_out": tokens_out,
+                    "tokens_source": token_source,
+                    "chunks": chunk_count,
+                    "chars": char_count,
+                    "words": word_count,
+                    "finish_reason": finish_reason,
+                    "usage": usage,
+                    "sample": "".join(sample_parts)[:1800],
+                },
+                ensure_ascii=False,
+            )
+            billing = extract_completion_billing(
+                response_headers,
+                {"usage": usage or {}},
+                fallback_model=payload.get("model"),
+                fallback_total_tokens=(
+                    usage.get("total_tokens")
+                    if usage and isinstance(usage.get("total_tokens"), int)
+                    else tokens_out or None
+                ),
+            )
+            if tokens_out == 0:
+                return ttft, time.time() - t0, 0, usage_prompt, "empty stream", response, billing
+            return ttft, time.time() - t0, tokens_out, usage_prompt, None, response, billing
+        except Exception as e:
+            tokens_out = max(word_count, round(char_count / 4)) if char_count else 0
+            response = None
+            if tokens_out:
+                response = json.dumps(
+                    {
+                        "stream": True,
+                        "tokens_out": tokens_out,
+                        "tokens_source": "partial_approx_chars",
+                        "chunks": chunk_count,
+                        "chars": char_count,
+                        "words": word_count,
+                        "finish_reason": finish_reason,
+                        "usage": usage,
+                        "sample": "".join(sample_parts)[:1800],
+                    },
+                    ensure_ascii=False,
+                )
+            return ttft, time.time() - t0, tokens_out, None, str(e)[:150], response or error_body, None

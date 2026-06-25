@@ -30,7 +30,7 @@
     },
     {
       "name": "gonka-api.org",
-      "base_url": "${GONKA_API_ORG_BASE_URL:-https://hskyauefqcgbvgvxkluj.supabase.co/functions/v1/gonka}",
+      "base_url": "${GONKA_API_ORG_BASE_URL:-https://api.gonka-api.org/v1}",
       "api_key": "${GONKA_API_ORG_API_KEY}",
       "models": [
         { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },

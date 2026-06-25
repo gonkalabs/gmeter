@@ -24,6 +24,7 @@ services:
       MIN_OUTPUT_TOKENS: ${MIN_OUTPUT_TOKENS:-10000}
       PUBLIC_READ_ONLY: ${PUBLIC_READ_ONLY:-true}
       RUN_PROBE_ON_STARTUP: ${RUN_PROBE_ON_STARTUP:-true}
+      RUN_LIMITS_ON_STARTUP: ${RUN_LIMITS_ON_STARTUP:-false}
     volumes:
       - gmeter-data:/app/data
     restart: unless-stopped

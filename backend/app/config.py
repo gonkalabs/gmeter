@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
     public_read_only: bool = True
     run_probe_on_startup: bool = True
+    run_limits_on_startup: bool = False
 
 
 settings = Settings()

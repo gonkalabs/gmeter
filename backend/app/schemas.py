@@ -165,3 +165,29 @@ class LimitsDetail(BaseModel):
     min_output_required: int
     limits_interval_minutes: int
     providers: list[ProviderLimits] = Field(default_factory=list)
+
+
+class CompetitorPriceRow(BaseModel):
+    provider: str
+    model_id: str
+    match_type: str = "exact"
+    input_per_m: float | None = None
+    output_per_m: float | None = None
+    source: str
+    source_label: str = "OpenRouter"
+
+
+class ModelPriceComparison(BaseModel):
+    model_id: str
+    label: str
+    openrouter_slug: str | None = None
+    variant_ids_searched: list[str] = Field(default_factory=list)
+    variants_found: list[str] = Field(default_factory=list)
+    competitors: list[CompetitorPriceRow] = Field(default_factory=list)
+    no_exact_listing: bool = False
+
+
+class PricingComparison(BaseModel):
+    checked_at: datetime
+    source: str
+    models: list[ModelPriceComparison] = Field(default_factory=list)

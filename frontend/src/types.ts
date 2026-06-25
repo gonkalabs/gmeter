@@ -135,6 +135,32 @@ export interface LimitsDetail {
   providers: ProviderLimits[];
 }
 
+export interface CompetitorPriceRow {
+  provider: string;
+  model_id: string;
+  match_type: "exact" | "variant";
+  input_per_m: number | null;
+  output_per_m: number | null;
+  source: string;
+  source_label: string;
+}
+
+export interface ModelPriceComparison {
+  model_id: string;
+  label: string;
+  openrouter_slug: string | null;
+  variant_ids_searched: string[];
+  variants_found: string[];
+  competitors: CompetitorPriceRow[];
+  no_exact_listing: boolean;
+}
+
+export interface PricingComparison {
+  checked_at: string;
+  source: string;
+  models: ModelPriceComparison[];
+}
+
 export type ExpandedMetric = {
   providerId: number;
   modelKey: string | null;

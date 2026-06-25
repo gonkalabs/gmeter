@@ -57,6 +57,11 @@ def seed_default_brokers():
         specs, config_authoritative = configured_broker_specs()
         all_brokers = db.query(Broker).order_by(Broker.id).all()
         by_url: dict[str, list[Broker]] = {}
+        by_name = {
+            broker.name: broker
+            for broker in all_brokers
+            if broker.name and not broker.name.startswith("__archived__")
+        }
         for broker in all_brokers:
             by_url.setdefault(normalize_base_url(broker.base_url), []).append(broker)
 
@@ -74,6 +79,8 @@ def seed_default_brokers():
         for spec in specs:
             key = normalize_base_url(spec.base_url)
             matches = by_url.get(key, [])
+            if not matches and spec.name in by_name:
+                matches = [by_name[spec.name]]
             spec_models = spec.models_csv or settings.default_models
             if matches:
                 canonical = matches[0]
@@ -164,6 +171,7 @@ async def lifespan(_app: FastAPI):
     scheduler.start()
     if settings.run_probe_on_startup:
         threading.Thread(target=startup_probe, daemon=True).start()
+    if settings.run_limits_on_startup:
         threading.Thread(target=lambda: scheduled_probe("limits"), daemon=True).start()
     yield
     scheduler.shutdown(wait=False)

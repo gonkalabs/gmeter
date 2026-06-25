@@ -63,6 +63,8 @@ Useful variables:
 | `LIMITS_INTERVAL_MINUTES` | Context/output limit probe interval |
 | `MIN_OUTPUT_TOKENS` | Required output threshold for max-output checks |
 | `PUBLIC_READ_ONLY` | Disables public write/admin endpoints when `true` |
+| `RUN_PROBE_ON_STARTUP` | Runs quick probes on backend startup when `true` |
+| `RUN_LIMITS_ON_STARTUP` | Runs full limit probes on backend startup when `true`; defaults to `false` |
 
 Example broker catalog:
 

@@ -168,7 +168,70 @@ def extract_completion_billing(
     if rate_per_million is None and cost_usd is not None and total_tokens:
         rate_per_million = cost_usd / total_tokens * 1_000_000
 
-    if rate_per_million is None:
+    input_rate_per_million = _first_number(
+        normalized_headers,
+        payload,
+        header_names=(
+            "x-input-usd-per-million-tokens",
+            "x-prompt-usd-per-million-tokens",
+            "x-usd-per-million-input-tokens",
+        ),
+        body_paths=(
+            ("input_usd_per_million_tokens",),
+            ("prompt_usd_per_million_tokens",),
+            ("input_rate_per_million",),
+            ("prompt_rate_per_million",),
+            ("billing", "input_usd_per_million_tokens"),
+            ("billing", "prompt_usd_per_million_tokens"),
+            ("billing", "input_rate_per_million"),
+            ("billing", "prompt_rate_per_million"),
+            ("usage", "input_usd_per_million_tokens"),
+            ("usage", "prompt_usd_per_million_tokens"),
+        ),
+    )
+    output_rate_per_million = _first_number(
+        normalized_headers,
+        payload,
+        header_names=(
+            "x-output-usd-per-million-tokens",
+            "x-completion-usd-per-million-tokens",
+            "x-usd-per-million-output-tokens",
+        ),
+        body_paths=(
+            ("output_usd_per_million_tokens",),
+            ("completion_usd_per_million_tokens",),
+            ("output_rate_per_million",),
+            ("completion_rate_per_million",),
+            ("billing", "output_usd_per_million_tokens"),
+            ("billing", "completion_usd_per_million_tokens"),
+            ("billing", "output_rate_per_million"),
+            ("billing", "completion_rate_per_million"),
+            ("usage", "output_usd_per_million_tokens"),
+            ("usage", "completion_usd_per_million_tokens"),
+        ),
+    )
+    if input_rate_per_million is None:
+        input_rate_per_million = _find_number_by_key(
+            payload,
+            lambda key: ("input" in key or "prompt" in key)
+            and ("per_million" in key or "per_1m" in key)
+            and any(term in key for term in ("usd", "price", "rate", "cost")),
+        )
+    if output_rate_per_million is None:
+        output_rate_per_million = _find_number_by_key(
+            payload,
+            lambda key: ("output" in key or "completion" in key)
+            and ("per_million" in key or "per_1m" in key)
+            and any(term in key for term in ("usd", "price", "rate", "cost")),
+        )
+    if output_rate_per_million is None:
+        output_rate_per_million = rate_per_million
+    if input_rate_per_million is None and output_rate_per_million is not None:
+        input_rate_per_million = output_rate_per_million
+    if output_rate_per_million is None and input_rate_per_million is not None:
+        output_rate_per_million = input_rate_per_million
+
+    if output_rate_per_million is None and input_rate_per_million is None:
         return None
 
     model = (
@@ -179,9 +242,13 @@ def extract_completion_billing(
     source = "response_headers" if any(k.startswith("x-") for k in normalized_headers) else "response_body"
 
     billing: dict[str, Any] = {
-        "rate_per_million": rate_per_million,
+        "rate_per_million": output_rate_per_million or input_rate_per_million,
         "source": source,
     }
+    if input_rate_per_million is not None:
+        billing["input_rate_per_million"] = input_rate_per_million
+    if output_rate_per_million is not None:
+        billing["output_rate_per_million"] = output_rate_per_million
     if model:
         billing["model"] = str(model)
     if cost_usd is not None:
@@ -196,7 +263,19 @@ def extract_completion_billing(
 
 
 def derived_prices_from_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
-    samples: dict[str, list[float]] = defaultdict(list)
+    return {
+        model: split["output"]
+        for model, split in derived_split_prices_from_rows(rows).items()
+        if split.get("output")
+    }
+
+
+def derived_split_prices_from_rows(
+    rows: list[dict[str, Any]],
+) -> dict[str, dict[str, float]]:
+    input_samples: dict[str, list[float]] = defaultdict(list)
+    output_samples: dict[str, list[float]] = defaultdict(list)
+
     for row in rows:
         model = row.get("model")
         if not model or model == "broker":
@@ -207,15 +286,38 @@ def derived_prices_from_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
         billing = detail.get("billing") or {}
         if not isinstance(billing, dict):
             continue
-        rate = _as_float(billing.get("rate_per_million"))
-        if rate is None or rate <= 0:
+
+        input_rate = _as_float(billing.get("input_rate_per_million"))
+        output_rate = _as_float(billing.get("output_rate_per_million"))
+        blended = _as_float(billing.get("rate_per_million"))
+        if output_rate is None:
+            output_rate = blended
+        if input_rate is None:
+            input_rate = output_rate if output_rate is not None else blended
+        if input_rate is None and output_rate is None:
             continue
-        samples[normalize_model_id(str(model))].append(rate)
+
+        model_keys = {normalize_model_id(str(model))}
         billed_model = billing.get("model")
         if billed_model:
-            samples[normalize_model_id(str(billed_model))].append(rate)
+            model_keys.add(normalize_model_id(str(billed_model)))
 
-    return {model: sum(rates) / len(rates) for model, rates in samples.items() if rates}
+        for model_key in model_keys:
+            if input_rate is not None and input_rate > 0:
+                input_samples[model_key].append(input_rate)
+            if output_rate is not None and output_rate > 0:
+                output_samples[model_key].append(output_rate)
+
+    merged: dict[str, dict[str, float]] = {}
+    for model_key in set(input_samples) | set(output_samples):
+        split: dict[str, float] = {}
+        if input_samples.get(model_key):
+            split["input"] = sum(input_samples[model_key]) / len(input_samples[model_key])
+        if output_samples.get(model_key):
+            split["output"] = sum(output_samples[model_key]) / len(output_samples[model_key])
+        if split:
+            merged[model_key] = split
+    return merged
 
 
 def derived_prices_from_result_pairs(
@@ -233,6 +335,70 @@ def merge_prices_with_derived(
     return merged
 
 
+def merge_split_prices_with_derived(
+    prices: dict[str, dict[str, float]], rows: list[dict[str, Any]]
+) -> dict[str, dict[str, float]]:
+    merged = derived_split_prices_from_rows(rows)
+    for model, split in prices.items():
+        key = normalize_model_id(model)
+        current = merged.setdefault(key, {})
+        if split.get("input") is not None:
+            current["input"] = split["input"]
+        if split.get("output") is not None:
+            current["output"] = split["output"]
+    return merged
+
+
+def lookup_model_split_price(
+    prices: dict[str, dict[str, float]], model_id: str
+) -> dict[str, float] | None:
+    if not prices:
+        return None
+    key = normalize_model_id(model_id)
+    if key in prices:
+        return prices[key]
+    if _WILDCARD_MODEL in prices:
+        return prices[_WILDCARD_MODEL]
+    tail = key.split("/")[-1]
+    for candidate, split in prices.items():
+        if candidate.endswith(tail) or tail in candidate:
+            return split
+    return None
+
+
+def average_split_price_for_models(
+    prices: dict[str, dict[str, float]], model_ids: list[str]
+) -> dict[str, float | None]:
+    input_rates: list[float] = []
+    output_rates: list[float] = []
+    for model_id in model_ids:
+        split = lookup_model_split_price(prices, model_id)
+        if not split:
+            continue
+        if split.get("input") is not None:
+            input_rates.append(split["input"])
+        if split.get("output") is not None:
+            output_rates.append(split["output"])
+
+    result: dict[str, float | None] = {
+        "input_avg": None,
+        "input_low": None,
+        "input_high": None,
+        "output_avg": None,
+        "output_low": None,
+        "output_high": None,
+    }
+    if input_rates:
+        result["input_avg"] = sum(input_rates) / len(input_rates)
+        result["input_low"] = min(input_rates)
+        result["input_high"] = max(input_rates)
+    if output_rates:
+        result["output_avg"] = sum(output_rates) / len(output_rates)
+        result["output_low"] = min(output_rates)
+        result["output_high"] = max(output_rates)
+    return result
+
+
 def average_price_for_models(
     prices: dict[str, float], model_ids: list[str]
 ) -> tuple[float | None, float | None]:
@@ -245,14 +411,77 @@ def average_price_for_models(
     return avg, high if high != low else None
 
 
+def _rates_from_pricing_item(item: dict[str, Any]) -> dict[str, float]:
+    input_rate = _as_float(
+        item.get("input_usd_per_million_tokens")
+        or item.get("prompt_usd_per_million_tokens")
+        or item.get("usd_per_million_input_tokens")
+        or item.get("input_price_per_million")
+    )
+    output_rate = _as_float(
+        item.get("output_usd_per_million_tokens")
+        or item.get("completion_usd_per_million_tokens")
+        or item.get("usd_per_million_output_tokens")
+        or item.get("output_price_per_million")
+        or item.get("usd_per_million_tokens")
+    )
+    if input_rate is None and output_rate is not None:
+        input_rate = output_rate
+    if output_rate is None and input_rate is not None:
+        output_rate = input_rate
+    split: dict[str, float] = {}
+    if input_rate is not None and input_rate > 0:
+        split["input"] = input_rate
+    if output_rate is not None and output_rate > 0:
+        split["output"] = output_rate
+    return split
+
+
 def _parse_pricing_payload(data: dict[str, Any]) -> dict[str, float]:
     prices: dict[str, float] = {}
     for item in data.get("models", []):
         model_id = item.get("model_id") or item.get("id")
-        rate = item.get("usd_per_million_tokens")
+        split = _rates_from_pricing_item(item)
+        rate = split.get("output") or split.get("input")
         if model_id and rate is not None:
             prices[normalize_model_id(str(model_id))] = float(rate)
     return prices
+
+
+def _parse_split_pricing_payload(data: dict[str, Any]) -> dict[str, dict[str, float]]:
+    prices: dict[str, dict[str, float]] = {}
+    for item in data.get("models", []):
+        model_id = item.get("model_id") or item.get("id")
+        split = _rates_from_pricing_item(item)
+        if model_id and split:
+            prices[normalize_model_id(str(model_id))] = split
+    return prices
+
+
+def fetch_broker_split_pricing(base_url: str) -> tuple[dict[str, dict[str, float]], str | None]:
+    origin = pricing_origin(base_url)
+    host = urlparse(origin).netloc.lower()
+    hardcoded = _HARDCODED_HOST_PRICES.get(host)
+    if hardcoded is not None:
+        split = {"input": hardcoded, "output": hardcoded}
+        return {_WILDCARD_MODEL: split}, f"hardcoded:{host}"
+    if host in _NO_PRICING_HOSTS:
+        return {}, "no_pricing"
+
+    try:
+        with httpx.Client(timeout=10, follow_redirects=True) as client:
+            response = client.get(
+                f"{origin}/api/pricing",
+                headers={"Accept": "application/json"},
+            )
+            if response.status_code == 200:
+                payload = response.json()
+                prices = _parse_split_pricing_payload(payload)
+                if prices:
+                    return prices, f"{origin}/api/pricing"
+    except Exception:
+        pass
+    return {}, None
 
 
 def fetch_broker_pricing(base_url: str) -> tuple[dict[str, float], str | None]:
@@ -300,32 +529,59 @@ def spend_values_for_scope(
     model: str | None,
     configured_models: list[str],
     prices: dict[str, float],
+    split_prices: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, Any]:
     available_prices = merge_prices_with_derived(prices, rows)
-    if not available_prices:
+    available_split = merge_split_prices_with_derived(split_prices or {}, rows)
+    if not available_prices and not available_split:
         return {"pricing_available": False}
 
     if model is not None:
+        split = lookup_model_split_price(available_split, model)
         rate = lookup_model_price(available_prices, model)
-        if rate is None:
+        if split is None and rate is None:
             return {"pricing_available": False}
-        return {
-            "pricing_available": True,
-            "real_spend_per_m": rate,
-            "real_spend_max": rate,
-        }
+        output_rate = (split or {}).get("output") or rate
+        input_rate = (split or {}).get("input") or output_rate
+        if output_rate is None and input_rate is None:
+            return {"pricing_available": False}
+        return _spend_payload(input_rate, output_rate, output_rate, output_rate)
 
     model_ids = configured_models or sorted(
         {row["model"] for row in rows if row.get("model") not in (None, "broker")}
     )
+    split_avg = average_split_price_for_models(available_split, model_ids)
     avg, high = average_price_for_models(available_prices, model_ids)
-    if avg is None:
+    output_avg = split_avg.get("output_avg") or avg
+    input_avg = split_avg.get("input_avg") or output_avg
+    if output_avg is None and input_avg is None:
         return {"pricing_available": False}
+    return _spend_payload(
+        input_avg,
+        output_avg,
+        split_avg.get("input_high") or input_avg,
+        split_avg.get("output_high") or high or output_avg,
+    )
 
+
+def _spend_payload(
+    input_rate: float | None,
+    output_rate: float | None,
+    input_max: float | None,
+    output_max: float | None,
+) -> dict[str, Any]:
+    if output_rate is None and input_rate is None:
+        return {"pricing_available": False}
+    output = output_rate if output_rate is not None else input_rate
+    input_value = input_rate if input_rate is not None else output
     return {
         "pricing_available": True,
-        "real_spend_per_m": avg,
-        "real_spend_max": high if high is not None else avg,
+        "real_spend_per_m": output,
+        "real_spend_max": output_max if output_max is not None else output,
+        "real_spend_input_per_m": input_value,
+        "real_spend_output_per_m": output,
+        "real_spend_input_max": input_max if input_max is not None else input_value,
+        "real_spend_output_max": output_max if output_max is not None else output,
     }
 
 

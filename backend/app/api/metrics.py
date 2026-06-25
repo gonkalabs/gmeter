@@ -2,7 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.schemas import DashboardDetail, DashboardMetrics, LimitsDetail, MeasurementLog
+from app.schemas import (
+    DashboardDetail,
+    DashboardMetrics,
+    LimitsDetail,
+    MeasurementLog,
+    PricingComparison,
+)
+from app.services.competitor_pricing import get_pricing_comparison
 from app.services.dashboard_detail import get_dashboard_detail, get_metric_logs
 from app.services.limits import get_limits_detail
 from app.services.metrics import get_dashboard_metrics
@@ -33,3 +40,8 @@ def dashboard_metric_logs(
 @router.get("/limits", response_model=LimitsDetail)
 def limits_detail(db: Session = Depends(get_db)):
     return get_limits_detail(db)
+
+
+@router.get("/pricing/comparison", response_model=PricingComparison)
+def pricing_comparison():
+    return get_pricing_comparison()

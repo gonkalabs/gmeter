@@ -69,6 +69,23 @@ def _chat_request(body: dict, *, stream: bool = False) -> dict:
     return req
 
 
+def _stream_meta(response: str | None) -> dict[str, Any]:
+    if not response:
+        return {}
+    try:
+        payload = json.loads(response)
+    except Exception:
+        return {}
+    return {
+        "tokens_source": payload.get("tokens_source"),
+        "stream_chunks": payload.get("chunks"),
+        "stream_chars": payload.get("chars"),
+        "stream_words": payload.get("words"),
+        "finish_reason": payload.get("finish_reason"),
+        "stream_usage": payload.get("usage"),
+    }
+
+
 def _json_candidate(text: str) -> tuple[Any | None, str]:
     cleaned = text.strip()
     if "</think>" in cleaned:
@@ -294,48 +311,89 @@ def pricing_probe_from_rate(model: str, rate_per_million: float, source: str) ->
 def test_max_output(
     client: GonkaClient, model: str, min_output_tokens: int
 ) -> dict[str, Any]:
+    requested_tokens = max(16_384, min_output_tokens + 1_024)
     body = {
         "model": model,
         "messages": [
             {
                 "role": "user",
                 "content": (
-                    "Write a comprehensive, detailed essay of at least 3000 words on the history of "
-                    "artificial intelligence from the 1950s to 2024. Cover key milestones, researchers, "
-                    "technical breakthroughs, and the societal impact of AI. Do not truncate."
+                    "Write a long detailed technical report. Continue until you reach the maximum "
+                    "output token limit. Do not summarize, conclude, or stop early. Use dense "
+                    "technical prose, numbered sections, implementation details, examples, edge "
+                    "cases, and operational notes until the generation is cut off by the token limit."
                 ),
             }
         ],
-        "max_tokens": 32768,
+        "max_tokens": requested_tokens,
+        "temperature": 0,
+        "stream_options": {"include_usage": True},
     }
-    data, elapsed, err, response, billing = client.post(body, timeout=600)
-    if err or not data:
+    ttft, elapsed, tok, prompt_tokens, err, response, billing = client.stream_completion(
+        body, timeout=600
+    )
+    if err and _retry_without_stream_options(err):
+        fallback_body = dict(body)
+        fallback_body.pop("stream_options", None)
+        ttft, elapsed, tok, prompt_tokens, err, response, billing = client.stream_completion(
+            fallback_body, timeout=600
+        )
+        body = fallback_body
+
+    if err:
         return _result(
             "max_output",
             False,
             error=err,
-            tokens_out=0,
-            detail=_with_meta(None, response=response, request=_chat_request(body), billing=billing),
+            latency_s=round(elapsed, 2),
+            ttft_s=round(ttft, 2) if ttft is not None else None,
+            tokens_in=prompt_tokens,
+            tokens_out=tok or 0,
+            detail=_with_meta(
+                {"requested_tokens": requested_tokens, **_stream_meta(response)},
+                response=response,
+                request=_chat_request(body, stream=True),
+                billing=billing,
+            ),
         )
-    usage = data.get("usage", {})
-    tok = usage.get("completion_tokens", 0)
     ok = tok >= min_output_tokens
-    total_tokens = usage.get("prompt_tokens", 0) + tok
+    total_tokens = (prompt_tokens or 0) + tok
     tps = round(tok / elapsed, 2) if elapsed > 0 else 0
     return _result(
         "max_output",
         ok,
         latency_s=round(elapsed, 2),
+        ttft_s=round(ttft, 2) if ttft is not None else None,
         tps=tps,
-        tokens_in=usage.get("prompt_tokens"),
+        stream_tps=tps,
+        tokens_in=prompt_tokens,
         tokens_out=tok,
         detail=_with_meta(
-            {"tokens_out": tok, "total_tokens": total_tokens},
-            response=response or json.dumps(data, ensure_ascii=False)[:1800],
-            request=_chat_request(body),
+            {
+                "tokens_out": tok,
+                "total_tokens": total_tokens,
+                "requested_tokens": requested_tokens,
+                **_stream_meta(response),
+            },
+            response=response,
+            request=_chat_request(body, stream=True),
             billing=billing,
         ),
         error=None if ok else f"only {tok} tokens (need ≥{min_output_tokens})",
+    )
+
+
+def _retry_without_stream_options(error: str) -> bool:
+    lowered = error.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "stream_options",
+            "stream options",
+            "unrecognized request argument",
+            "extra_forbidden",
+            "unsupported parameter",
+        )
     )
 
 

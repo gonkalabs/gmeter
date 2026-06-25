@@ -1,4 +1,4 @@
-import type { Broker, DashboardDetail, LimitsDetail, MeasurementLog, ProbeRun } from "./types";
+import type { Broker, DashboardDetail, LimitsDetail, MeasurementLog, PricingComparison, ProbeRun } from "./types";
 
 const BASE = "/api";
 
@@ -53,6 +53,7 @@ export const api = {
       }`
     ),
   getLimits: () => request<LimitsDetail>("/metrics/limits"),
+  getPricingComparison: () => request<PricingComparison>("/metrics/pricing/comparison"),
   listRuns: (brokerId?: number) =>
     request<ProbeRun[]>(
       `/runs${brokerId ? `?broker_id=${brokerId}&limit=50` : "?limit=50"}`

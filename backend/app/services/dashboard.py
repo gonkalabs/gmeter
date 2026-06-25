@@ -296,6 +296,10 @@ def compute_metric_values(
         "pricing_available": pricing_available,
         "real_spend_per_m": spend.get("real_spend_per_m"),
         "real_spend_max": spend.get("real_spend_max"),
+        "real_spend_input_per_m": spend.get("real_spend_input_per_m"),
+        "real_spend_output_per_m": spend.get("real_spend_output_per_m"),
+        "real_spend_input_max": spend.get("real_spend_input_max"),
+        "real_spend_output_max": spend.get("real_spend_output_max"),
     }
     metered_rows = [r for r in rows if r["test_name"] != "pricing_probe"]
     if not metered_rows:
