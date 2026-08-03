@@ -10,6 +10,7 @@ export const TEST_LABELS: Record<string, string> = {
   tool_calling: "Tool calling",
   json_mode: "JSON mode",
   multimodality: "Vision",
+  pricing_probe: "Pricing probe",
 };
 
 export function testLabel(name: string, t?: TFunction) {
@@ -23,6 +24,7 @@ export function testLabel(name: string, t?: TFunction) {
       tool_calling: "tests.tool_calling",
       json_mode: "tests.json_mode",
       multimodality: "tests.multimodality",
+      pricing_probe: "tests.pricing_probe",
     } as const;
     const key = keys[name as keyof typeof keys];
     if (key) return t(key);
