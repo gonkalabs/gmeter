@@ -50,12 +50,14 @@ interface ScaleMarker {
   value: number;
   title: string;
   hint?: string;
+  items?: string[];
 }
 
 interface PriceTooltipContent {
   title: string;
   value?: string;
   hint?: string;
+  items?: string[];
 }
 
 export function PriceComparison({ detail }: Props) {
@@ -447,6 +449,13 @@ function PriceHoverTarget({
         <div className="price-tooltip" role="tooltip">
           <strong>{tooltip.title}</strong>
           {tooltip.value && <span>{tooltip.value}</span>}
+          {tooltip.items && (
+            <ul className="price-tooltip-list">
+              {tooltip.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
           {tooltip.hint && <em>{tooltip.hint}</em>}
         </div>
       )}
@@ -459,17 +468,46 @@ function buildSpectrumMarkers(
   kind: "input" | "output",
   t: TFunction
 ): ScaleMarker[] {
-  return competitors
-    .filter((row) => (kind === "input" ? row.inputPerM : row.outputPerM) != null)
-    .map((row) => {
-      const value = (kind === "input" ? row.inputPerM : row.outputPerM)!;
-      return {
-        id: `${row.key}-${kind}`,
-        value,
-        title: `${row.provider}${row.isVariant ? "*" : ""}`,
-        hint: row.isVariant ? t("pricing.note.marketVariant") : t("pricing.note.marketExact"),
-      };
-    });
+  const grouped = new Map<
+    string,
+    { values: number[]; providers: string[]; hasVariant: boolean }
+  >();
+
+  competitors.forEach((row) => {
+    const value = kind === "input" ? row.inputPerM : row.outputPerM;
+    if (value == null) return;
+
+    const priceLabel = formatUsd(value);
+    const group = grouped.get(priceLabel) ?? {
+      values: [],
+      providers: [],
+      hasVariant: false,
+    };
+    group.values.push(value);
+    group.providers.push(`${row.provider}${row.isVariant ? "*" : ""}`);
+    group.hasVariant ||= row.isVariant;
+    grouped.set(priceLabel, group);
+  });
+
+  return Array.from(grouped.entries()).map(([priceLabel, group]) => {
+    const value = group.values.reduce((sum, item) => sum + item, 0) / group.values.length;
+    const providers = Array.from(new Set(group.providers)).sort((a, b) => a.localeCompare(b));
+    const multiple = providers.length > 1;
+
+    return {
+      id: `${kind}-${priceLabel}`,
+      value,
+      title: multiple
+        ? t("pricing.visual.providersAtPrice", { count: providers.length })
+        : providers[0],
+      items: multiple ? providers : undefined,
+      hint: group.hasVariant
+        ? t("pricing.note.marketVariant")
+        : multiple
+          ? t("pricing.visual.marketProviders")
+          : t("pricing.note.marketExact"),
+    };
+  });
 }
 
 function PriceSpectrum({
@@ -547,6 +585,7 @@ function PriceSpectrum({
                   title: marker.title,
                   value: formatUsd(marker.value),
                   hint: marker.hint,
+                  items: marker.items,
                 }}
               >
                 <div className="price-spectrum-tick" />

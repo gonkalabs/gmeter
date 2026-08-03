@@ -316,7 +316,7 @@ function ModelDetail({
           </div>
         </div>
       ) : (
-        <div className="model-logs-tab">
+        <div className="model-logs-tab" aria-busy={loadingLogs}>
           <div className="model-log-picker" role="tablist" aria-label={t("logs.probeLogs")}>
             {model.metrics.map((metric) => {
               const meta = metricMeta(metric.key, t);
@@ -337,9 +337,9 @@ function ModelDetail({
               );
             })}
           </div>
-          {(loadingLogs || logsError) && (
-            <p className={`model-log-status ${logsError ? "error" : ""}`}>
-              {logsError || t("metricPage.loadingLogs")}
+          {logsError && (
+            <p className="model-log-status error" role="alert">
+              {logsError}
             </p>
           )}
           {selectedMetric ? (
