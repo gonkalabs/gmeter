@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DashboardDetail, MeasurementLog, MetricBlock, ProviderBlock } from "../types";
 import { api } from "../api";
 import {
@@ -23,8 +23,22 @@ export function ProvidersPage({ detail, loading }: Props) {
   const { t, formatDate } = useI18n();
   const [selectedProvider, setSelectedProvider] = useState<number | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const modelsColumnRef = useRef<HTMLDivElement>(null);
 
   const activeProvider = detail?.providers.find((p) => p.broker_id === selectedProvider);
+
+  useEffect(() => {
+    if (selectedProvider == null || !window.matchMedia("(max-width: 900px)").matches) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      modelsColumnRef.current?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedProvider]);
 
   function selectProvider(id: number) {
     setSelectedProvider((prev) => (prev === id ? null : id));
@@ -73,7 +87,7 @@ export function ProvidersPage({ detail, loading }: Props) {
             </ul>
           </div>
 
-          <div className="explorer-col">
+          <div className="explorer-col explorer-models" ref={modelsColumnRef}>
             <div className="col-title">
               {activeProvider
                 ? t("providers.modelsFor", { provider: activeProvider.broker_name })
