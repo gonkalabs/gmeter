@@ -1033,6 +1033,13 @@ a:hover {
   gap: 14px;
 }
 
+@media (max-width: 700px) {
+  .status-banner-main {
+    gap: 20px;
+    padding-left: 8px;
+  }
+}
+
 .status-banner-main strong {
   display: block;
   font-size: 15px;
@@ -2285,7 +2292,8 @@ a:hover {
 
   .glance-table-head,
   .glance-table-row {
-    min-width: 720px;
+    min-width: 780px;
+    padding-right: 18px;
   }
 }
 
@@ -2393,12 +2401,17 @@ a:hover {
     grid-template-columns: 1fr;
     min-height: 0;
   }
+
+  .explorer-models {
+    scroll-margin-top: 112px;
+  }
 }
 
 .explorer-col {
   background: var(--surface);
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -2506,7 +2519,10 @@ a:hover {
 }
 
 .model-detail {
+  width: 100%;
+  min-width: 0;
   padding: 12px;
+  overflow-x: hidden;
   overflow-y: auto;
   flex: 1;
 }
@@ -2811,6 +2827,8 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  width: 100%;
+  min-width: 0;
 }
 
 .model-log-picker button {
@@ -3164,6 +3182,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .history-id {
@@ -3196,6 +3215,47 @@ a:hover {
   padding: 0 24px 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-subtle);
+}
+
+@media (max-width: 900px) {
+  .history-row {
+    grid-template-columns: minmax(0, 1fr) 24px;
+    grid-template-areas:
+      "main chevron"
+      "meta chevron";
+    gap: 8px 12px;
+    padding: 14px 16px;
+  }
+
+  .history-main {
+    grid-area: main;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .history-meta {
+    grid-area: meta;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    min-width: 0;
+  }
+
+  .history-meta time,
+  .history-stat {
+    white-space: nowrap;
+  }
+
+  .history-row > .chevron {
+    grid-area: chevron;
+    align-self: center;
+  }
+
+  .history-detail {
+    padding: 0 16px 16px;
+  }
 }
 
 .status-pill {
@@ -3675,6 +3735,7 @@ a:hover {
 }
 
 .probe-log-status {
+  grid-column: 1;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -3692,7 +3753,12 @@ a:hover {
   color: var(--bad);
 }
 
+.probe-log-meta {
+  display: contents;
+}
+
 .probe-log-provider {
+  grid-column: 2;
   font-weight: 500;
   color: var(--text);
   overflow: hidden;
@@ -3708,7 +3774,16 @@ a:hover {
   white-space: nowrap;
 }
 
+.probe-log-model {
+  grid-column: 3;
+}
+
+.probe-log-test {
+  grid-column: 4;
+}
+
 .probe-log-summary {
+  grid-column: 5;
   color: var(--text-secondary);
   line-height: 1.4;
   overflow: hidden;
@@ -3717,11 +3792,13 @@ a:hover {
 }
 
 .probe-log-time {
+  grid-column: 6;
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
 .probe-log-chevron {
+  grid-column: 7;
   color: var(--text-tertiary);
   text-align: center;
 }
@@ -3764,12 +3841,18 @@ a:hover {
     grid-area: chevron;
   }
 
-  .probe-log-provider,
-  .probe-log-model,
-  .probe-log-test,
-  .probe-log-time {
+  .probe-log-meta {
     grid-area: meta;
-    display: inline;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    min-width: 0;
+    row-gap: 2px;
+  }
+
+  .probe-log-meta > * {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .probe-log-provider::after {
@@ -4024,8 +4107,13 @@ a:hover {
 }
 
 .history-broker {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-size: 11px;
   color: var(--text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .test-item-btn {

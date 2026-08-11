@@ -74,24 +74,26 @@ function ProbeLogRow({
         <span className={`probe-log-status ${log.ok ? "pass" : "fail"}`}>
           {log.ok ? t("common.pass") : t("common.fail")}
         </span>
-        {linkProvider ? (
-          <BrokerLink name={log.provider} className="probe-log-provider">
-            {log.provider}
-          </BrokerLink>
-        ) : (
-          <span className="probe-log-provider">{log.provider}</span>
-        )}
-        <span className="probe-log-model">{log.model ?? "—"}</span>
-        <span className="probe-log-test">{testLabel}</span>
+        <span className="probe-log-meta">
+          {linkProvider ? (
+            <BrokerLink name={log.provider} className="probe-log-provider">
+              {log.provider}
+            </BrokerLink>
+          ) : (
+            <span className="probe-log-provider">{log.provider}</span>
+          )}
+          <span className="probe-log-model">{log.model ?? "—"}</span>
+          <span className="probe-log-test">{testLabel}</span>
+          <time className="probe-log-time" dateTime={log.measured_at}>
+            {formatDate(log.measured_at, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </time>
+        </span>
         <span className="probe-log-summary">{log.summary}</span>
-        <time className="probe-log-time" dateTime={log.measured_at}>
-          {formatDate(log.measured_at, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
         <span className="probe-log-chevron">{open ? "−" : "+"}</span>
       </div>
 
