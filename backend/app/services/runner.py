@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.network_models import filter_active_models
 from app.models import Broker, ProbeResult, ProbeRun
 from app.probes.client import GonkaClient
 from app.probes.suite import (
@@ -44,12 +45,20 @@ def run_probe_suite(
         run = ProbeRun(broker_id=broker.id, status="running", run_type=mode)
         db.add(run)
         db.commit()
-        db.refresh(run)
+        # Note: no db.refresh() here on purpose — refresh() opens a new implicit
+        # transaction that SQLAlchemy won't release until the next commit/rollback.
+        # Since expire_on_commit=False, run.id (autoincrement PK) is already
+        # populated from the flush and stays readable without reconnecting.
+        # Holding a live connection across the whole probe suite (which makes
+        # many slow/timeout-prone HTTP calls) starves the small SQLite pool and
+        # can hang the entire API.
 
-    model_list = resolve_model_ids(broker, models)
+    model_list = filter_active_models(resolve_model_ids(broker, models))
     client = GonkaClient(broker.base_url, broker.api_key)
     all_results: list[tuple[str, dict[str, Any]]] = []
-    prices, pricing_source = fetch_broker_pricing(broker.base_url)
+    prices, pricing_source = fetch_broker_pricing(
+        broker.base_url, api_key=broker.api_key
+    )
 
     try:
         conn = test_connectivity(client)
@@ -105,7 +114,6 @@ def run_probe_suite(
         run.status = "completed"
         run.finished_at = datetime.utcnow()
         db.commit()
-        db.refresh(run)
         return run
     except Exception as e:
         run.status = "failed"

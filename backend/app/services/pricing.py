@@ -10,9 +10,11 @@ import httpx
 _CACHE: dict[str, tuple[datetime, dict[str, float], str | None]] = {}
 _TTL = timedelta(minutes=5)
 _WILDCARD_MODEL = "*"
-_HARDCODED_HOST_PRICES = {
-    "api.gonkagate.com": 0.000353,
-}
+# No hardcoded per-host prices: every broker's rate must come from either its
+# own live pricing endpoint or from real per-request billing signals embedded
+# in completion responses (see extract_completion_billing). If neither is
+# available, pricing_available is simply False rather than showing a guess.
+_HARDCODED_HOST_PRICES: dict[str, float] = {}
 _NO_PRICING_HOSTS = {
     "gonka-gateway.mingles.ai",
 }
@@ -416,15 +418,28 @@ def _rates_from_pricing_item(item: dict[str, Any]) -> dict[str, float]:
         item.get("input_usd_per_million_tokens")
         or item.get("prompt_usd_per_million_tokens")
         or item.get("usd_per_million_input_tokens")
+        or item.get("usd_per_million_input")
         or item.get("input_price_per_million")
     )
     output_rate = _as_float(
         item.get("output_usd_per_million_tokens")
         or item.get("completion_usd_per_million_tokens")
         or item.get("usd_per_million_output_tokens")
+        or item.get("usd_per_million_output")
         or item.get("output_price_per_million")
-        or item.get("usd_per_million_tokens")
     )
+    # Generic single-rate field. Some brokers only publish this (blended rate,
+    # applies to both directions). Others (e.g. gate.joingonka.ai) publish it
+    # *alongside* an explicit output field, in which case it actually means
+    # the input rate specifically -- so only treat it as "blended" when no
+    # explicit output rate was found above.
+    blended = _as_float(item.get("usd_per_million_tokens"))
+    if input_rate is None and output_rate is not None and blended is not None:
+        input_rate = blended
+    elif input_rate is None and output_rate is None and blended is not None:
+        input_rate = blended
+        output_rate = blended
+
     if input_rate is None and output_rate is not None:
         input_rate = output_rate
     if output_rate is None and input_rate is not None:
@@ -458,7 +473,110 @@ def _parse_split_pricing_payload(data: dict[str, Any]) -> dict[str, dict[str, fl
     return prices
 
 
-def fetch_broker_split_pricing(base_url: str) -> tuple[dict[str, dict[str, float]], str | None]:
+def _auth_headers(api_key: str | None) -> dict[str, str]:
+    headers = {"Accept": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["x-api-key"] = api_key
+    return headers
+
+
+def _models_endpoint(base_url: str) -> str:
+    base = base_url.rstrip("/")
+    if base.endswith("/v1"):
+        return f"{base}/models"
+    return f"{pricing_origin(base_url)}/v1/models"
+
+
+def _rates_from_openai_model_pricing(pricing: Mapping[str, Any]) -> dict[str, float]:
+    """Normalize OpenAI-compatible /v1/models pricing blocks to USD / 1M tokens."""
+    prompt = _as_float(pricing.get("prompt"))
+    completion = _as_float(pricing.get("completion"))
+    input_m = _as_float(
+        pricing.get("input")
+        or pricing.get("input_per_million")
+        or pricing.get("usd_per_million_input")
+    )
+    output_m = _as_float(
+        pricing.get("output")
+        or pricing.get("output_per_million")
+        or pricing.get("usd_per_million_output")
+    )
+
+    def _to_per_million(value: float | None) -> float | None:
+        if value is None or value <= 0:
+            return None
+        # Tiny values are almost always USD / token (OpenRouter-style).
+        if value < 0.01:
+            return value * 1_000_000
+        return value
+
+    input_rate = input_m if input_m is not None and input_m > 0 else _to_per_million(prompt)
+    output_rate = (
+        output_m if output_m is not None and output_m > 0 else _to_per_million(completion)
+    )
+    if input_rate is None and output_rate is not None:
+        input_rate = output_rate
+    if output_rate is None and input_rate is not None:
+        output_rate = input_rate
+
+    split: dict[str, float] = {}
+    if input_rate is not None and input_rate > 0:
+        split["input"] = input_rate
+    if output_rate is not None and output_rate > 0:
+        split["output"] = output_rate
+    return split
+
+
+def _parse_models_list_split_pricing(data: dict[str, Any]) -> dict[str, dict[str, float]]:
+    prices: dict[str, dict[str, float]] = {}
+    items = data.get("data") or data.get("models") or []
+    if not isinstance(items, list):
+        return prices
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id") or item.get("model_id") or item.get("name")
+        pricing = item.get("pricing")
+        if not model_id or not isinstance(pricing, dict):
+            continue
+        split = _rates_from_openai_model_pricing(pricing)
+        if split:
+            prices[normalize_model_id(str(model_id))] = split
+    return prices
+
+
+def _fetch_live_split_pricing(
+    base_url: str, api_key: str | None = None
+) -> tuple[dict[str, dict[str, float]], str | None]:
+    origin = pricing_origin(base_url)
+    headers = _auth_headers(api_key)
+
+    try:
+        with httpx.Client(timeout=10, follow_redirects=True) as client:
+            response = client.get(f"{origin}/api/pricing", headers=headers)
+            if response.status_code == 200:
+                payload = response.json()
+                if isinstance(payload, dict):
+                    prices = _parse_split_pricing_payload(payload)
+                    if prices:
+                        return prices, f"{origin}/api/pricing"
+
+            response = client.get(_models_endpoint(base_url), headers=headers)
+            if response.status_code == 200:
+                payload = response.json()
+                if isinstance(payload, dict):
+                    prices = _parse_models_list_split_pricing(payload)
+                    if prices:
+                        return prices, f"{_models_endpoint(base_url)}"
+    except Exception:
+        pass
+    return {}, None
+
+
+def fetch_broker_split_pricing(
+    base_url: str, api_key: str | None = None
+) -> tuple[dict[str, dict[str, float]], str | None]:
     origin = pricing_origin(base_url)
     host = urlparse(origin).netloc.lower()
     hardcoded = _HARDCODED_HOST_PRICES.get(host)
@@ -467,27 +585,16 @@ def fetch_broker_split_pricing(base_url: str) -> tuple[dict[str, dict[str, float
         return {_WILDCARD_MODEL: split}, f"hardcoded:{host}"
     if host in _NO_PRICING_HOSTS:
         return {}, "no_pricing"
-
-    try:
-        with httpx.Client(timeout=10, follow_redirects=True) as client:
-            response = client.get(
-                f"{origin}/api/pricing",
-                headers={"Accept": "application/json"},
-            )
-            if response.status_code == 200:
-                payload = response.json()
-                prices = _parse_split_pricing_payload(payload)
-                if prices:
-                    return prices, f"{origin}/api/pricing"
-    except Exception:
-        pass
-    return {}, None
+    return _fetch_live_split_pricing(base_url, api_key=api_key)
 
 
-def fetch_broker_pricing(base_url: str) -> tuple[dict[str, float], str | None]:
-    """Fetch broker pricing from configured overrides or a live /api/pricing endpoint."""
+def fetch_broker_pricing(
+    base_url: str, api_key: str | None = None
+) -> tuple[dict[str, float], str | None]:
+    """Fetch broker pricing from /api/pricing or /v1/models pricing metadata."""
     origin = pricing_origin(base_url)
-    cached = _CACHE.get(origin)
+    cache_key = f"{origin}|auth={1 if api_key else 0}"
+    cached = _CACHE.get(cache_key)
     if cached and datetime.utcnow() - cached[0] < _TTL:
         return cached[1], cached[2]
 
@@ -496,30 +603,36 @@ def fetch_broker_pricing(base_url: str) -> tuple[dict[str, float], str | None]:
     if hardcoded is not None:
         prices = {_WILDCARD_MODEL: hardcoded}
         source = f"hardcoded:{host}"
-        _CACHE[origin] = (datetime.utcnow(), prices, source)
+        _CACHE[cache_key] = (datetime.utcnow(), prices, source)
         return prices, source
     if host in _NO_PRICING_HOSTS:
-        _CACHE[origin] = (datetime.utcnow(), {}, "no_pricing")
+        _CACHE[cache_key] = (datetime.utcnow(), {}, "no_pricing")
         return {}, "no_pricing"
 
-    prices: dict[str, float] = {}
-    source: str | None = None
+    split_prices, source = _fetch_live_split_pricing(base_url, api_key=api_key)
+    prices = {
+        model: float(split.get("output") or split.get("input") or 0)
+        for model, split in split_prices.items()
+        if (split.get("output") or split.get("input") or 0) > 0
+    }
+    # Also accept flat /api/pricing payloads that only expose a blended rate.
+    if not prices:
+        try:
+            with httpx.Client(timeout=10, follow_redirects=True) as client:
+                response = client.get(
+                    f"{origin}/api/pricing",
+                    headers=_auth_headers(api_key),
+                )
+                if response.status_code == 200:
+                    payload = response.json()
+                    if isinstance(payload, dict):
+                        prices = _parse_pricing_payload(payload)
+                        if prices:
+                            source = f"{origin}/api/pricing"
+        except Exception:
+            pass
 
-    try:
-        with httpx.Client(timeout=10, follow_redirects=True) as client:
-            response = client.get(
-                f"{origin}/api/pricing",
-                headers={"Accept": "application/json"},
-            )
-            if response.status_code == 200:
-                payload = response.json()
-                prices = _parse_pricing_payload(payload)
-                if prices:
-                    source = f"{origin}/api/pricing"
-    except Exception:
-        pass
-
-    _CACHE[origin] = (datetime.utcnow(), prices, source)
+    _CACHE[cache_key] = (datetime.utcnow(), prices, source)
     return prices, source
 
 

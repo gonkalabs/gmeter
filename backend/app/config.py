@@ -7,8 +7,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./gmeter.db"
     probe_interval_minutes: int = 10
     limits_interval_minutes: int = 60
-    default_models: str = (
-        "moonshotai/Kimi-K2.6,Qwen/Qwen3-235B-A22B-Instruct-2507-FP8,MiniMaxAI/MiniMax-M2.7"
+    default_models: str = "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7"
+    active_models: str = "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7,zai-org/GLM-5.2-FP8"
+    known_models: str = (
+        "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7,zai-org/GLM-5.2-FP8,"
+        "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
     )
     brokers_config_path: str = "brokers.json"
     brokers_config_json: str = ""

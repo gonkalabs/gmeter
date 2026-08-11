@@ -5,12 +5,14 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Broker, ProbeResult, ProbeRun
+from app.network_models import NETWORK_UPDATE_URL, is_active_model, network_model_catalog, network_notice
 from app.schemas import (
     DashboardDetail,
     DashboardMetrics,
     MeasurementLog,
     MetricBlock,
     ModelBlock,
+    NetworkModelStatus,
     ProviderBlock,
 )
 from app.services.dashboard import (
@@ -26,7 +28,11 @@ from app.services.dashboard import (
 )
 from app.services.metrics import get_dashboard_metrics
 from app.services.model_catalog import broker_model_aliases, broker_model_ids
-from app.services.pricing import spend_values_for_scope
+from app.services.pricing import (
+    fetch_broker_pricing,
+    fetch_broker_split_pricing,
+    spend_values_for_scope,
+)
 
 
 def _build_logs(
@@ -202,15 +208,26 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
 
         measured_at = run.finished_at or run.started_at
         model_ids = sorted({r.model for r in run.results if r.model != "broker"})
-        spend = (
-            {
+        live_prices, _ = fetch_broker_pricing(broker.base_url, api_key=broker.api_key)
+        live_split, _ = fetch_broker_split_pricing(
+            broker.base_url, api_key=broker.api_key
+        )
+        result_rows = [_result_row(r, include_detail=False) for r in run.results]
+        spend = spend_values_for_scope(
+            rows=result_rows,
+            model=None,
+            configured_models=configured,
+            prices=live_prices,
+            split_prices=live_split,
+        )
+        if not spend.get("pricing_available") and run.summary and run.summary.get(
+            "real_spend_per_m"
+        ):
+            spend = {
                 "pricing_available": True,
                 "real_spend_per_m": run.summary.get("real_spend_per_m"),
                 "real_spend_max": run.summary.get("real_spend_per_m"),
             }
-            if run.summary and run.summary.get("real_spend_per_m")
-            else {"pricing_available": False}
-        )
         providers.append(
             ProviderBlock(
                 broker_id=broker.id,
@@ -226,7 +243,7 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                     measured_at=measured_at,
                     provider_name=broker.name,
                     configured_models=configured,
-                    prices={},
+                    prices=live_prices,
                     aliases=aliases,
                     spend_values=spend,
                     include_logs=True,
@@ -236,6 +253,7 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                     ModelBlock(
                         model=model_id,
                         label=model_label(model_id, aliases),
+                        active=is_active_model(model_id),
                         metrics=_metric_blocks(
                             run.results,
                             run_id=run.id,
@@ -243,8 +261,15 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                             provider_name=broker.name,
                             model=model_id,
                             configured_models=configured,
-                            prices={},
+                            prices=live_prices,
                             aliases=aliases,
+                            spend_values=spend_values_for_scope(
+                                rows=result_rows,
+                                model=model_id,
+                                configured_models=configured,
+                                prices=live_prices,
+                                split_prices=live_split,
+                            ),
                             include_logs=True,
                             include_detail=False,
                         ),
@@ -254,7 +279,23 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
             )
         )
 
-    return DashboardDetail(aggregate=aggregate, providers=providers)
+    network_status = [
+        NetworkModelStatus(
+            model_id=item.model_id,
+            label=item.label,
+            active=item.active,
+            status_note=item.status_note,
+        )
+        for item in network_model_catalog()
+    ]
+
+    return DashboardDetail(
+        aggregate=aggregate,
+        providers=providers,
+        network_models=network_status,
+        network_notice=network_notice() or None,
+        network_update_url=NETWORK_UPDATE_URL,
+    )
 
 
 def get_metric_logs(

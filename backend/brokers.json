@@ -6,7 +6,6 @@
       "api_key": "${GONKA_API_KEY}",
       "models": [
         { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
         { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     },
@@ -16,16 +15,16 @@
       "api_key": "${GONKAGATE_API_KEY}",
       "models": {
         "kimi-k2.6": "moonshotai/kimi-k2.6",
-        "qwen3-235b": "qwen/qwen3-235b-a22b-instruct-2507-fp8",
         "minimax-m2.7": "minimaxai/minimax-m2.7"
       }
     },
     {
       "name": "mingles.ai",
-      "base_url": "${MINGLES_BASE_URL:-https://gonka-gateway.mingles.ai/v1}",
+      "base_url": "${MINGLES_BASE_URL:-https://router.mingles.ai/v1}",
       "api_key": "${MINGLES_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" }
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     },
     {
@@ -34,7 +33,6 @@
       "api_key": "${GONKA_API_ORG_API_KEY}",
       "models": [
         { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
         { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     },
@@ -44,17 +42,52 @@
       "api_key": "${HYPERFUSION_API_KEY}",
       "models": [
         { "id": "gonka/moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "gonka/Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
         { "id": "gonka/MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     },
     {
-      "name": "router.gonkascan.com",
+      "name": "gonkarouter.io",
       "base_url": "${GONKASCAN_BASE_URL:-https://api.gonkascan.com/v1}",
       "api_key": "${GONKASCAN_API_KEY}",
       "models": [
         { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8", "alias": "qwen3-235b" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "gate.joingonka.ai",
+      "base_url": "${JOINGONKA_BASE_URL:-https://gate.joingonka.ai/v1}",
+      "api_key": "${JOINGONKA_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "gonkabroker.com",
+      "base_url": "${GONKABROKER_BASE_URL:-https://proxy.gonkabroker.com/v1}",
+      "api_key": "${GONKABROKER_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
+        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "gonka24.com",
+      "base_url": "${GONKA24_BASE_URL:-https://api.leantoken.tech/v1}",
+      "api_key": "${GONKA24_API_KEY}",
+      "enabled": false,
+      "models": [
+        { "id": "kimi-k2.6", "alias": "kimi-k2.6" },
+        { "id": "minimax-m2.7", "alias": "minimax-m2.7" }
+      ]
+    },
+    {
+      "name": "dahl.global",
+      "base_url": "${DAHL_BASE_URL:-https://inference.dahl.global/v1}",
+      "api_key": "${DAHL_API_KEY}",
+      "models": [
+        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
         { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
       ]
     }

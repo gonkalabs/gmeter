@@ -5,9 +5,10 @@ export const MODEL_LABELS: Record<string, string> = {
   kimi: "kimi",
   qwen: "qwen",
   minimax: "minimax",
+  glm: "glm-5.2",
 };
 
-const MODEL_ORDER = ["kimi", "qwen", "minimax"];
+const MODEL_ORDER = ["kimi", "minimax", "glm", "qwen"];
 
 export interface TrendChartPoint {
   time: string;
@@ -23,6 +24,7 @@ export function modelKey(modelId: string): string {
   if (normalized.includes("kimi")) return "kimi";
   if (normalized.includes("qwen")) return "qwen";
   if (normalized.includes("minimax")) return "minimax";
+  if (normalized.includes("glm")) return "glm";
   return normalized.split("/").pop() ?? normalized;
 }
 

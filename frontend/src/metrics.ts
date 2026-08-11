@@ -138,6 +138,24 @@ export function sortProvidersByScore<T extends { latest_run_id: number | null; m
   });
 }
 
+/** Preferred order for marketing / compare pages */
+export function compareProviderRank(name: string): number {
+  const n = name.toLowerCase();
+  if (n.includes("proxy.gonka") || n === "proxy.gonka.gg") return 0;
+  if (n.includes("gonkagate")) return 1;
+  return 2;
+}
+
+export function sortProvidersForCompare<T extends { broker_name: string; metrics: MetricBlock[] }>(
+  providers: T[]
+): T[] {
+  return [...providers].sort((a, b) => {
+    const rank = compareProviderRank(a.broker_name) - compareProviderRank(b.broker_name);
+    if (rank !== 0) return rank;
+    return providerScore(b.metrics) - providerScore(a.metrics);
+  });
+}
+
 export function providerScore(metrics: MetricBlock[]): number {
   const uptime = metrics.find((m) => m.key === "api_uptime")?.raw.api_uptime_pct ?? 0;
   const failed = metrics.find((m) => m.key === "failed_probes")?.raw.failed_probes_pct ?? 100;

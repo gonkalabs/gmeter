@@ -89,7 +89,6 @@ def _default_broker_specs() -> list[BrokerSeedSpec]:
             models=split_model_ids(os.environ.get("GONKA_MODELS", settings.default_models)),
             model_aliases={
                 "moonshotai/Kimi-K2.6": "kimi-k2.6",
-                "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "qwen3-235b",
                 "MiniMaxAI/MiniMax-M2.7": "minimax-m2.7",
             },
             api_key=os.environ.get("GONKA_API_KEY", ""),
@@ -101,13 +100,13 @@ def _default_broker_specs() -> list[BrokerSeedSpec]:
             models=split_model_ids(
                 os.environ.get(
                     "GONKAGATE_MODELS",
-                    "moonshotai/kimi-k2.6,qwen/qwen3-235b-a22b-instruct-2507-fp8,minimaxai/minimax-m2.7",
+                    "moonshotai/kimi-k2.6,minimaxai/minimax-m2.7,zai-org/glm-5.2-fp8",
                 )
             ),
             model_aliases={
                 "moonshotai/kimi-k2.6": "kimi-k2.6",
-                "qwen/qwen3-235b-a22b-instruct-2507-fp8": "qwen3-235b",
                 "minimaxai/minimax-m2.7": "minimax-m2.7",
+                "zai-org/glm-5.2-fp8": "glm-5.2",
             },
             api_key=os.environ.get("GONKAGATE_API_KEY", ""),
             enabled=bool(os.environ.get("GONKAGATE_API_KEY", "")),

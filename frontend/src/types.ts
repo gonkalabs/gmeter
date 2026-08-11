@@ -51,7 +51,15 @@ export interface MetricBlock {
 export interface ModelBlock {
   model: string;
   label: string;
+  active?: boolean;
   metrics: MetricBlock[];
+}
+
+export interface NetworkModelStatus {
+  model_id: string;
+  label: string;
+  active: boolean;
+  status_note?: string | null;
 }
 
 export interface ProviderBlock {
@@ -69,6 +77,9 @@ export interface ProviderBlock {
 export interface DashboardDetail {
   aggregate: DashboardMetrics;
   providers: ProviderBlock[];
+  network_models?: NetworkModelStatus[];
+  network_notice?: string | null;
+  network_update_url?: string | null;
 }
 
 export interface ProbeResult {
@@ -149,6 +160,8 @@ export interface ModelPriceComparison {
   model_id: string;
   label: string;
   openrouter_slug: string | null;
+  openrouter_card_input_per_m: number | null;
+  openrouter_card_output_per_m: number | null;
   variant_ids_searched: string[];
   variants_found: string[];
   competitors: CompetitorPriceRow[];

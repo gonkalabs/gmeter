@@ -1,48 +1,24 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { api } from "../api";
-import type { DashboardDetail, ModelPriceComparison, PricingComparison } from "../types";
+import type { DashboardDetail, PricingComparison } from "../types";
+import {
+  buildModelPricingStats,
+  buildPriceDetailRows,
+  buildPriceSummaryRows,
+  buildSharedDomain,
+  formatTimesLabel,
+  formatUsd,
+  formatUsdRange,
+  median,
+  toPercent,
+  type ModelPricingStats,
+  type TrackDomain,
+} from "../pricingStats";
 import { useI18n, type TFunction } from "../i18n";
 
 interface Props {
   detail: DashboardDetail;
-}
-
-interface AxisRange {
-  low: number;
-  high: number;
-  avg: number;
-}
-
-interface GonkaSplitRange {
-  input: AxisRange;
-  output: AxisRange;
-  brokers: number;
-}
-
-interface CompetitorRow {
-  key: string;
-  provider: string;
-  modelId: string;
-  inputPerM: number | null;
-  outputPerM: number | null;
-  isVariant: boolean;
-}
-
-interface ModelPricingStats {
-  model: ModelPriceComparison;
-  gonkaRange: GonkaSplitRange | null;
-  cheaperTimes: number | null;
-  cheaperLabel: string | null;
-  worldInputAverage: number | null;
-  worldOutputAverage: number | null;
-  gonkaBaseline: { input: number | null; output: number | null };
-  competitors: CompetitorRow[];
-}
-
-interface TrackDomain {
-  min: number;
-  max: number;
-  ticks: number[];
+  standalone?: boolean;
 }
 
 interface ScaleMarker {
@@ -50,21 +26,24 @@ interface ScaleMarker {
   value: number;
   title: string;
   hint?: string;
+  items?: string[];
 }
 
 interface PriceTooltipContent {
   title: string;
   value?: string;
   hint?: string;
+  items?: string[];
 }
 
-export function PriceComparison({ detail }: Props) {
+export function PriceComparison({ detail, standalone = false }: Props) {
   const { t, formatDate, formatNumber } = useI18n();
   const [comparison, setComparison] = useState<PricingComparison | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [activeModelId, setActiveModelId] = useState<string>("");
+  const [detailExpanded, setDetailExpanded] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -118,21 +97,44 @@ export function PriceComparison({ detail }: Props) {
       })
     : null;
 
+  const toggleDetail = (modelId: string) => {
+    setDetailExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(modelId)) next.delete(modelId);
+      else next.add(modelId);
+      return next;
+    });
+  };
+
   return (
-    <section className="page-section price-section">
+    <section className={`page-section price-section ${standalone ? "price-section-standalone" : ""}`}>
       <header className="section-header price-header">
         <div>
-          <h2>{t("pricing.title")}</h2>
-          {!expanded && <p>{t("pricing.hint")}</p>}
+          {!standalone && <h2>{t("pricing.title")}</h2>}
+          <p className={standalone ? "price-standalone-lead" : undefined}>{t("pricing.hint")}</p>
         </div>
         {checkedLabel && <span className="price-date">{checkedLabel}</span>}
       </header>
 
-      <div className="price-panel">
+      <div className={`price-panel ${standalone ? "price-panel-standalone" : ""}`}>
         {loading && !comparison ? (
           <div className="price-loading">{t("pricing.loading")}</div>
         ) : error ? (
           <div className="price-error">{error}</div>
+        ) : standalone ? (
+          <>
+            <div className="price-compare-cards">
+              {modelStats.map((stats) => (
+                <PriceCompareSummaryCard
+                  key={stats.model.model_id}
+                  stats={stats}
+                  expanded={detailExpanded.has(stats.model.model_id)}
+                  onToggle={() => toggleDetail(stats.model.model_id)}
+                />
+              ))}
+            </div>
+            <p className="price-footnote">{t("pricing.footnote")}</p>
+          </>
         ) : (
           <>
             {!expanded ? (
@@ -191,9 +193,7 @@ export function PriceComparison({ detail }: Props) {
                         onClick={() => setActiveModelId(stats.model.model_id)}
                       >
                         <span>{stats.model.label}</span>
-                        {stats.cheaperLabel && (
-                          <em>{stats.cheaperLabel}×</em>
-                        )}
+                        {stats.cheaperLabel && <em>{stats.cheaperLabel}×</em>}
                       </button>
                     ))}
                   </div>
@@ -207,6 +207,100 @@ export function PriceComparison({ detail }: Props) {
         )}
       </div>
     </section>
+  );
+}
+
+function priceTableRowLabel(row: { isGonka: boolean; isOpenRouter?: boolean; label: string }, t: TFunction) {
+  if (row.isGonka) return t("pricing.gonkaBrokers");
+  if (row.isOpenRouter) return t("pricing.openRouter");
+  return row.label;
+}
+
+function priceTableRowClass(row: { isGonka: boolean; isOpenRouter?: boolean }) {
+  if (row.isGonka) return "is-gonka";
+  if (row.isOpenRouter) return "is-openrouter";
+  return "";
+}
+
+function PriceCompareSummaryCard({
+  stats,
+  expanded,
+  onToggle,
+}: {
+  stats: ModelPricingStats;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const { t } = useI18n();
+  const rows = useMemo(() => buildPriceSummaryRows(stats), [stats]);
+  const competitorCount = rows.filter((row) => !row.isGonka).length;
+
+  return (
+    <article className={`price-compare-card ${expanded ? "is-expanded" : ""}`}>
+      <header className="price-compare-card-head">
+        <div>
+          <h3>{stats.model.label}</h3>
+          <p>{t("comparePrices.summaryHint", { count: competitorCount })}</p>
+        </div>
+        <span className="price-compare-card-unit">{t("pricing.usdPerM")}</span>
+      </header>
+
+      {rows.length ? (
+        <div className="price-compare-table-wrap">
+          <table className="price-compare-table">
+            <thead>
+              <tr>
+                <th scope="col">{t("pricing.provider")}</th>
+                <th scope="col">{t("pricing.inputShort")}</th>
+                <th scope="col">{t("pricing.outputShort")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id} className={priceTableRowClass(row)}>
+                  <th scope="row">{priceTableRowLabel(row, t)}</th>
+                  <td>{row.inputPerM != null ? formatUsd(row.inputPerM) : "—"}</td>
+                  <td>{row.outputPerM != null ? formatUsd(row.outputPerM) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="price-compare-empty">{t("pricing.noExactListing")}</p>
+      )}
+
+      <button
+        type="button"
+        className="price-compare-details-toggle"
+        onClick={onToggle}
+        aria-expanded={expanded}
+      >
+        <span>{expanded ? t("comparePrices.hideDetails") : t("comparePrices.showDetails")}</span>
+        <svg
+          className={`price-expand-icon ${expanded ? "is-expanded" : ""}`}
+          viewBox="0 0 16 16"
+          width="14"
+          height="14"
+          aria-hidden
+        >
+          <path
+            d="M4 6l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      {expanded ? (
+        <div className="price-compare-details">
+          <ModelPriceVisual stats={stats} showMultiplier={false} textOnly />
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -248,7 +342,15 @@ function collapsedModelLabel(stats: ModelPricingStats, t: TFunction) {
   return model.label;
 }
 
-function ModelPriceVisual({ stats }: { stats: ModelPricingStats }) {
+function ModelPriceVisual({
+  stats,
+  showMultiplier = true,
+  textOnly = false,
+}: {
+  stats: ModelPricingStats;
+  showMultiplier?: boolean;
+  textOnly?: boolean;
+}) {
   const { t } = useI18n();
   const { model, gonkaRange, cheaperLabel, competitors } = stats;
 
@@ -276,6 +378,85 @@ function ModelPriceVisual({ stats }: { stats: ModelPricingStats }) {
     .filter((row) => row.inputPerM != null || row.outputPerM != null)
     .sort((a, b) => (a.outputPerM ?? 0) - (b.outputPerM ?? 0));
 
+  const detailRows = useMemo(() => buildPriceDetailRows(stats), [stats]);
+
+  if (textOnly) {
+    return (
+      <article className="price-visual-card price-visual-card-table">
+        <header className="price-visual-head">
+          <div className="price-visual-title-wrap">
+            {competitors.length > 0 && (
+              <span className="price-visual-count">
+                {t("pricing.providerCountLive", { count: competitors.length })}
+              </span>
+            )}
+          </div>
+        </header>
+
+        <div className="price-stat-row">
+          <StatChip
+            label={t("pricing.gonkaBrokers")}
+            value={
+              gonkaRange
+                ? formatUsdRange(gonkaRange.output.low, gonkaRange.output.high)
+                : t("pricing.visual.pending")
+            }
+            tone={gonkaRange ? "good" : "muted"}
+            hint={
+              gonkaRange
+                ? `${t("pricing.inputShort")} ${formatUsdRange(gonkaRange.input.low, gonkaRange.input.high)}`
+                : t("pricing.note.gonkaWaiting")
+            }
+          />
+          <StatChip
+            label={t("pricing.visual.marketMedianOut")}
+            value={outputMedian != null ? formatUsd(outputMedian) : "—"}
+            tone="neutral"
+            hint={
+              inputMedian != null
+                ? `${t("pricing.inputShort")} ${formatUsd(inputMedian)}`
+                : undefined
+            }
+          />
+          <StatChip
+            label={t("pricing.visual.marketSpreadOut")}
+            value={
+              outputValues.length
+                ? formatUsdRange(Math.min(...outputValues), Math.max(...outputValues))
+                : "—"
+            }
+            tone="neutral"
+          />
+        </div>
+
+        {detailRows.length ? (
+          <div className="price-compare-table-wrap price-detail-table-wrap">
+            <table className="price-compare-table price-detail-table">
+              <thead>
+                <tr>
+                  <th scope="col">{t("pricing.provider")}</th>
+                  <th scope="col">{t("pricing.inputShort")}</th>
+                  <th scope="col">{t("pricing.outputShort")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detailRows.map((row) => (
+                  <tr key={row.id} className={priceTableRowClass(row)}>
+                    <th scope="row">{priceTableRowLabel(row, t)}</th>
+                    <td>{row.inputPerM != null ? formatUsd(row.inputPerM) : "—"}</td>
+                    <td>{row.outputPerM != null ? formatUsd(row.outputPerM) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="price-visual-empty">{t("pricing.noExactListing")}</p>
+        )}
+      </article>
+    );
+  }
+
   return (
     <article className="price-visual-card">
       <header className="price-visual-head">
@@ -287,7 +468,9 @@ function ModelPriceVisual({ stats }: { stats: ModelPricingStats }) {
             </span>
           )}
         </div>
-        {cheaperLabel && <span className="price-visual-badge">{cheaperLabel}×</span>}
+        {showMultiplier && cheaperLabel && (
+          <span className="price-visual-badge">{cheaperLabel}×</span>
+        )}
       </header>
 
       <div className="price-stat-row">
@@ -447,6 +630,13 @@ function PriceHoverTarget({
         <div className="price-tooltip" role="tooltip">
           <strong>{tooltip.title}</strong>
           {tooltip.value && <span>{tooltip.value}</span>}
+          {tooltip.items && (
+            <ul className="price-tooltip-list">
+              {tooltip.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
           {tooltip.hint && <em>{tooltip.hint}</em>}
         </div>
       )}
@@ -455,21 +645,50 @@ function PriceHoverTarget({
 }
 
 function buildSpectrumMarkers(
-  competitors: CompetitorRow[],
+  competitors: ModelPricingStats["competitors"],
   kind: "input" | "output",
   t: TFunction
 ): ScaleMarker[] {
-  return competitors
-    .filter((row) => (kind === "input" ? row.inputPerM : row.outputPerM) != null)
-    .map((row) => {
-      const value = (kind === "input" ? row.inputPerM : row.outputPerM)!;
-      return {
-        id: `${row.key}-${kind}`,
-        value,
-        title: `${row.provider}${row.isVariant ? "*" : ""}`,
-        hint: row.isVariant ? t("pricing.note.marketVariant") : t("pricing.note.marketExact"),
-      };
-    });
+  const grouped = new Map<
+    string,
+    { values: number[]; providers: string[]; hasVariant: boolean }
+  >();
+
+  competitors.forEach((row) => {
+    const value = kind === "input" ? row.inputPerM : row.outputPerM;
+    if (value == null) return;
+
+    const priceLabel = formatUsd(value);
+    const group = grouped.get(priceLabel) ?? {
+      values: [],
+      providers: [],
+      hasVariant: false,
+    };
+    group.values.push(value);
+    group.providers.push(`${row.provider}${row.isVariant ? "*" : ""}`);
+    group.hasVariant ||= row.isVariant;
+    grouped.set(priceLabel, group);
+  });
+
+  return Array.from(grouped.entries()).map(([priceLabel, group]) => {
+    const value = group.values.reduce((sum, item) => sum + item, 0) / group.values.length;
+    const providers = Array.from(new Set(group.providers)).sort((a, b) => a.localeCompare(b));
+    const multiple = providers.length > 1;
+
+    return {
+      id: `${kind}-${priceLabel}`,
+      value,
+      title: multiple
+        ? t("pricing.visual.providersAtPrice", { count: providers.length })
+        : providers[0],
+      items: multiple ? providers : undefined,
+      hint: group.hasVariant
+        ? t("pricing.note.marketVariant")
+        : multiple
+          ? t("pricing.visual.marketProviders")
+          : t("pricing.note.marketExact"),
+    };
+  });
 }
 
 function PriceSpectrum({
@@ -507,7 +726,9 @@ function PriceSpectrum({
                 className="price-spectrum-gonka-wrap"
                 style={{
                   left: `${Math.min(gonkaStart, gonkaEnd)}%`,
-                  width: `${Math.max(gonkaEnd - gonkaStart, 0.8)}%`,
+                  // Linear scales make Gonka's absolute range tiny — keep a
+                  // visible chip while still anchoring the left edge at 0%.
+                  width: `${Math.max(gonkaEnd - gonkaStart, 1.5)}%`,
                 }}
                 tooltip={{
                   title: t("pricing.gonkaBrokers"),
@@ -547,6 +768,7 @@ function PriceSpectrum({
                   title: marker.title,
                   value: formatUsd(marker.value),
                   hint: marker.hint,
+                  items: marker.items,
                 }}
               >
                 <div className="price-spectrum-tick" />
@@ -693,156 +915,4 @@ function PriceLadderRow({
       />
     </div>
   );
-}
-
-function buildSharedDomain(values: Array<number | null | undefined>): TrackDomain {
-  const all = values.filter((value): value is number => value != null && value > 0);
-  if (!all.length) {
-    return { min: 0.001, max: 10, ticks: [0.001, 0.01, 0.1, 1, 10] };
-  }
-
-  const minVal = Math.min(...all);
-  const maxVal = Math.max(...all);
-  const logMin = Math.floor(Math.log10(Math.max(minVal * 0.8, 1e-6)));
-  const logMax = Math.ceil(Math.log10(Math.max(maxVal * 1.25, minVal * 1.05)));
-  const ticks: number[] = [];
-  for (let exp = logMin; exp <= logMax; exp += 1) {
-    ticks.push(10 ** exp);
-  }
-  return { min: 10 ** logMin, max: 10 ** logMax, ticks };
-}
-
-function toPercent(value: number, min: number, max: number) {
-  const logMin = Math.log10(min);
-  const logMax = Math.log10(max);
-  const logVal = Math.log10(Math.max(value, min));
-  if (logMax <= logMin) return 50;
-  return Math.min(100, Math.max(0, ((logVal - logMin) / (logMax - logMin)) * 100));
-}
-
-function median(values: number[]) {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-function buildModelPricingStats(
-  model: ModelPriceComparison,
-  detail: DashboardDetail,
-  formatNumber: (value: number) => string
-): ModelPricingStats {
-  const gonkaRange = gonkaSplitRangeForModel(detail, model.model_id);
-  const competitors = model.competitors
-    .map((row) => ({
-      key: `${row.provider}-${row.model_id}`,
-      provider: row.provider,
-      modelId: row.model_id,
-      inputPerM: row.input_per_m,
-      outputPerM: row.output_per_m,
-      isVariant: row.match_type === "variant",
-    }))
-    .filter((row) => row.inputPerM != null || row.outputPerM != null);
-
-  const worldInputAverage = average(competitors.map((row) => row.inputPerM));
-  const worldOutputAverage = average(competitors.map((row) => row.outputPerM));
-
-  let cheaperTimes: number | null = null;
-  let cheaperLabel: string | null = null;
-  if (gonkaRange) {
-    const inputRatio =
-      worldInputAverage && gonkaRange.input.avg > 0
-        ? worldInputAverage / gonkaRange.input.avg
-        : null;
-    const outputRatio =
-      worldOutputAverage && gonkaRange.output.avg > 0
-        ? worldOutputAverage / gonkaRange.output.avg
-        : null;
-    const ratios = [inputRatio, outputRatio].filter(
-      (value): value is number => value != null && value > 1.05
-    );
-    if (ratios.length) {
-      cheaperTimes = ratios.reduce((sum, value) => sum + value, 0) / ratios.length;
-      cheaperLabel = formatTimesLabel(cheaperTimes, formatNumber);
-    }
-  }
-
-  return {
-    model,
-    gonkaRange,
-    cheaperTimes,
-    cheaperLabel,
-    worldInputAverage,
-    worldOutputAverage,
-    gonkaBaseline: {
-      input: gonkaRange?.input.low ?? null,
-      output: gonkaRange?.output.low ?? null,
-    },
-    competitors,
-  };
-}
-
-function readSplitRates(raw: Record<string, unknown>) {
-  if (!raw.pricing_available) return null;
-  const output = Number(raw.real_spend_output_per_m ?? raw.real_spend_per_m);
-  const input = Number(raw.real_spend_input_per_m ?? raw.real_spend_output_per_m ?? raw.real_spend_per_m);
-  if (!Number.isFinite(input) || input <= 0) return null;
-  if (!Number.isFinite(output) || output <= 0) return null;
-  return { input, output };
-}
-
-function gonkaSplitRangeForModel(detail: DashboardDetail, modelId: string): GonkaSplitRange | null {
-  const brokerRates: Array<{ input: number; output: number }> = [];
-
-  for (const provider of detail.providers) {
-    const modelBlock = provider.models.find((item) => item.model === modelId);
-    const modelMetric = modelBlock?.metrics.find((item) => item.key === "real_spend");
-    let rates = readSplitRates(modelMetric?.raw ?? {});
-
-    if (!rates) {
-      const brokerMetric = provider.metrics.find((item) => item.key === "real_spend");
-      rates = readSplitRates(brokerMetric?.raw ?? {});
-    }
-
-    if (rates) brokerRates.push(rates);
-  }
-
-  if (!brokerRates.length) return null;
-
-  const inputRates = brokerRates.map((item) => item.input).sort((a, b) => a - b);
-  const outputRates = brokerRates.map((item) => item.output).sort((a, b) => a - b);
-  return {
-    input: axisRange(inputRates),
-    output: axisRange(outputRates),
-    brokers: brokerRates.length,
-  };
-}
-
-function axisRange(values: number[]): AxisRange {
-  return {
-    low: values[0],
-    high: values[values.length - 1],
-    avg: values.reduce((sum, value) => sum + value, 0) / values.length,
-  };
-}
-
-function average(values: Array<number | null>) {
-  const filtered = values.filter((value): value is number => value != null && value > 0);
-  if (!filtered.length) return null;
-  return filtered.reduce((sum, value) => sum + value, 0) / filtered.length;
-}
-
-function formatTimesLabel(times: number, formatNumber: (value: number) => string) {
-  return times >= 10 ? formatNumber(Math.round(times)) : times.toFixed(1);
-}
-
-function formatUsd(value: number) {
-  if (value < 0.01) return `$${value.toFixed(4)}`;
-  if (value < 1) return `$${value.toFixed(3)}`;
-  return `$${value.toFixed(2)}`;
-}
-
-function formatUsdRange(low: number, high: number) {
-  if (Math.abs(high - low) < 0.0001) return formatUsd(low);
-  return `${formatUsd(low)}–${formatUsd(high)}`;
 }

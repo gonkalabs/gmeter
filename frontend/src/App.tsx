@@ -119,6 +119,9 @@ export default function App() {
                 {label}
               </button>
             ))}
+            <a className="nav-link" href="/compare">
+              {t("tabs.compare")}
+            </a>
           </nav>
 
           <button

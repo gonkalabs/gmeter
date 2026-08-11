@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import type { DashboardDetail, MetricBlock } from "../types";
 import { sortProvidersByScore } from "../metrics";
 import { GaugeDashboard } from "./GaugeDashboard";
+import { NetworkEpochBanner } from "./NetworkEpochBanner";
 import { PriceComparison } from "./PriceComparison";
 import { StatusBanner } from "./StatusBanner";
 import { SummaryGrid } from "./SummaryGrid";
@@ -40,8 +41,7 @@ export function OverviewPage({ detail, loading, probing, onSelectMetric }: Props
   return (
     <div className="dashboard-layout">
       <StatusBanner detail={detail} probing={!!probing} />
-
-      <PriceComparison detail={detail} />
+      <NetworkEpochBanner detail={detail} />
 
       <section className="page-section gauge-section">
         <header className="section-header">
@@ -63,6 +63,8 @@ export function OverviewPage({ detail, loading, probing, onSelectMetric }: Props
         </header>
         <SummaryGrid providers={providers} onSelect={onSelectMetric} />
       </section>
+
+      <PriceComparison detail={detail} />
     </div>
   );
 }

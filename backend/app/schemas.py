@@ -105,7 +105,15 @@ class MetricBlock(BaseModel):
 class ModelBlock(BaseModel):
     model: str
     label: str
+    active: bool = True
     metrics: list[MetricBlock]
+
+
+class NetworkModelStatus(BaseModel):
+    model_id: str
+    label: str
+    active: bool
+    status_note: str | None = None
 
 
 class ProviderBlock(BaseModel):
@@ -123,6 +131,9 @@ class ProviderBlock(BaseModel):
 class DashboardDetail(BaseModel):
     aggregate: DashboardMetrics
     providers: list[ProviderBlock] = Field(default_factory=list)
+    network_models: list[NetworkModelStatus] = Field(default_factory=list)
+    network_notice: str | None = None
+    network_update_url: str | None = None
 
 
 class RunRequest(BaseModel):
@@ -181,6 +192,8 @@ class ModelPriceComparison(BaseModel):
     model_id: str
     label: str
     openrouter_slug: str | None = None
+    openrouter_card_input_per_m: float | None = None
+    openrouter_card_output_per_m: float | None = None
     variant_ids_searched: list[str] = Field(default_factory=list)
     variants_found: list[str] = Field(default_factory=list)
     competitors: list[CompetitorPriceRow] = Field(default_factory=list)

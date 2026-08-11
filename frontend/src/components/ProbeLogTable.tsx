@@ -34,8 +34,8 @@ export function ProbeLogTable({ logs, emptyMessage, linkProviders = true }: Prop
         <span>{t("logs.provider")}</span>
         <span>{t("logs.model")}</span>
         <span>{t("logs.test")}</span>
-        <span>{t("logs.summary")}</span>
         <span>{t("logs.measured")}</span>
+        <span>{t("logs.summary")}</span>
         <span aria-hidden />
       </div>
       <div className="probe-log-body">
@@ -74,25 +74,29 @@ function ProbeLogRow({
         <span className={`probe-log-status ${log.ok ? "pass" : "fail"}`}>
           {log.ok ? t("common.pass") : t("common.fail")}
         </span>
-        {linkProvider ? (
-          <BrokerLink name={log.provider} className="probe-log-provider">
-            {log.provider}
-          </BrokerLink>
-        ) : (
-          <span className="probe-log-provider">{log.provider}</span>
-        )}
-        <span className="probe-log-model">{log.model ?? "—"}</span>
-        <span className="probe-log-test">{testLabel}</span>
+        <div className="probe-log-meta">
+          {linkProvider ? (
+            <BrokerLink name={log.provider} className="probe-log-provider">
+              {log.provider}
+            </BrokerLink>
+          ) : (
+            <span className="probe-log-provider">{log.provider}</span>
+          )}
+          <span className="probe-log-model">{log.model ?? "—"}</span>
+          <span className="probe-log-test">{testLabel}</span>
+          <time className="probe-log-time" dateTime={log.measured_at}>
+            {formatDate(log.measured_at, {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </time>
+        </div>
         <span className="probe-log-summary">{log.summary}</span>
-        <time className="probe-log-time" dateTime={log.measured_at}>
-          {formatDate(log.measured_at, {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </time>
-        <span className="probe-log-chevron">{open ? "−" : "+"}</span>
+        <span className="probe-log-chevron" aria-hidden="true">
+          {open ? "−" : "+"}
+        </span>
       </div>
 
       {open && (

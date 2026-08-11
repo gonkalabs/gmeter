@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { LimitsDetail, ModelLimits } from "../types";
 import { LIMITS_INTERVAL_MINUTES } from "../metrics";
-import { useI18n } from "../i18n";
+import { useI18n, type TFunction } from "../i18n";
 import { hostFromUrl } from "../brokerLinks";
 
 interface Props {
@@ -115,6 +115,8 @@ export function LimitsPage({ limits, loading, probing }: Props) {
 function ModelLimitsCard({ model }: { model: ModelLimits }) {
   const { t, formatNumber } = useI18n();
   const [showLadder, setShowLadder] = useState(false);
+  const maxInputError = formatLimitError(model.max_input_error, t);
+  const maxOutputError = formatLimitError(model.max_output_error, t);
 
   return (
     <article className="limits-card">
@@ -137,8 +139,8 @@ function ModelLimitsCard({ model }: { model: ModelLimits }) {
           <span className={`status-pill ${model.max_input_ok ? "completed" : "failed"}`}>
             {model.max_input_ok ? t("common.pass") : t("common.fail")}
           </span>
-          {model.max_input_error && !model.max_input_ok && (
-            <p className="limits-error">{model.max_input_error}</p>
+          {maxInputError && !model.max_input_ok && (
+            <p className="limits-error">{maxInputError}</p>
           )}
           {model.max_input_ladder.length > 0 && (
             <>
@@ -154,13 +156,16 @@ function ModelLimitsCard({ model }: { model: ModelLimits }) {
               </button>
               {showLadder && (
                 <ul className="limits-ladder">
-                  {model.max_input_ladder.map((step) => (
-                    <li key={step.label} className={step.ok ? "pass" : "fail"}>
-                      <span>{step.label}</span>
-                      <span>{step.ok ? t("common.ok") : step.error || t("common.fail")}</span>
-                      {step.ttft != null && <span>{step.ttft}s TTFT</span>}
-                    </li>
-                  ))}
+                  {model.max_input_ladder.map((step) => {
+                    const stepError = formatLimitError(step.error, t);
+                    return (
+                      <li key={step.label} className={step.ok ? "pass" : "fail"}>
+                        <span>{step.label}</span>
+                        <span>{step.ok ? t("common.ok") : stepError || t("common.fail")}</span>
+                        {step.ttft != null && <span>{step.ttft}s TTFT</span>}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </>
@@ -180,11 +185,36 @@ function ModelLimitsCard({ model }: { model: ModelLimits }) {
           <span className={`status-pill ${model.max_output_ok ? "completed" : "failed"}`}>
             {model.max_output_ok ? t("common.pass") : t("common.fail")}
           </span>
-          {model.max_output_error && !model.max_output_ok && (
-            <p className="limits-error">{model.max_output_error}</p>
+          {maxOutputError && !model.max_output_ok && (
+            <p className="limits-error">{maxOutputError}</p>
           )}
         </div>
       </div>
     </article>
   );
+}
+
+function formatLimitError(error: string | null, t: TFunction): string | null {
+  if (!error) return null;
+
+  const normalized = error.trim().toLowerCase();
+  if (
+    normalized === "the read operation timed out" ||
+    normalized === "read timed out" ||
+    normalized === "read timed out."
+  ) {
+    return t("limits.error.readTimeout");
+  }
+
+  const insufficientOutput = error.match(
+    /^only\s+([\d\s,.]+)\s+tokens\s+\(need\s+≥\s*([\d\s,.]+)\)$/i
+  );
+  if (insufficientOutput) {
+    return t("limits.error.insufficientOutput", {
+      count: insufficientOutput[1].trim(),
+      required: insufficientOutput[2].trim(),
+    });
+  }
+
+  return error;
 }

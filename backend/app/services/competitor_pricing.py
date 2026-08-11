@@ -6,6 +6,7 @@ from typing import Any, Literal
 import httpx
 
 from app.config import settings
+from app.network_models import active_model_ids
 from app.services.pricing import normalize_model_id
 
 _OPENROUTER_MODELS = "https://openrouter.ai/api/v1/models"
@@ -19,6 +20,10 @@ _VARIANT_LOOKUPS: dict[str, list[str]] = {
         "Qwen/Qwen3-235B-A22B-Instruct",
         "Qwen/Qwen3-235B-A22B",
     ],
+    normalize_model_id("zai-org/GLM-5.2-FP8"): [
+        "z-ai/glm-5.2",
+        "z-ai/glm-5",
+    ],
 }
 
 
@@ -28,12 +33,13 @@ def _friendly_label(model_id: str) -> str:
         "Kimi-K2.6": "Kimi K2.6",
         "Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
         "MiniMax-M2.7": "MiniMax M2.7",
+        "GLM-5.2-FP8": "GLM-5.2 FP8",
     }
     return labels.get(tail, tail.replace("-", " "))
 
 
 def _gonka_model_ids() -> list[str]:
-    return [model.strip() for model in settings.default_models.split(",") if model.strip()]
+    return active_model_ids()
 
 
 def _per_million(token_price: Any) -> float | None:
@@ -127,6 +133,22 @@ def _fetch_competitors(
     return exact_slug, variants_searched, sorted(variants_found), competitors
 
 
+def _openrouter_card_pricing(
+    openrouter_models: list[dict[str, Any]], slug: str | None
+) -> tuple[float | None, float | None]:
+    if not slug:
+        return None, None
+    for item in openrouter_models:
+        if str(item.get("id") or "") != slug:
+            continue
+        pricing = item.get("pricing") or {}
+        return (
+            _per_million(pricing.get("prompt")),
+            _per_million(pricing.get("completion")),
+        )
+    return None, None
+
+
 def get_pricing_comparison() -> dict[str, Any]:
     global _CACHE
     now = datetime.utcnow()
@@ -146,11 +168,14 @@ def get_pricing_comparison() -> dict[str, Any]:
                 openrouter_models,
                 gonka_id,
             )
+            card_input, card_output = _openrouter_card_pricing(openrouter_models, exact_slug)
             comparison_models.append(
                 {
                     "model_id": gonka_id,
                     "label": _friendly_label(gonka_id),
                     "openrouter_slug": exact_slug,
+                    "openrouter_card_input_per_m": card_input,
+                    "openrouter_card_output_per_m": card_output,
                     "variant_ids_searched": variants_searched,
                     "variants_found": variants_found,
                     "competitors": competitors,
