@@ -5,10 +5,11 @@ export const MODEL_LABELS: Record<string, string> = {
   kimi: "kimi",
   qwen: "qwen",
   minimax: "minimax",
+  deepseek: "deepseek-v4-flash",
   glm: "glm-5.2",
 };
 
-const MODEL_ORDER = ["kimi", "minimax", "glm", "qwen"];
+const MODEL_ORDER = ["kimi", "minimax", "deepseek", "glm", "qwen"];
 
 export interface TrendChartPoint {
   time: string;
@@ -24,6 +25,7 @@ export function modelKey(modelId: string): string {
   if (normalized.includes("kimi")) return "kimi";
   if (normalized.includes("qwen")) return "qwen";
   if (normalized.includes("minimax")) return "minimax";
+  if (normalized.includes("deepseek")) return "deepseek";
   if (normalized.includes("glm")) return "glm";
   return normalized.split("/").pop() ?? normalized;
 }
@@ -41,6 +43,7 @@ export function modelLabel(modelId: string, brokers: Broker[] = []): string {
 export function collectTrendModels(brokers: Broker[], runs: ProbeRun[]): string[] {
   const ids = new Set<string>();
   for (const broker of brokers) {
+    if (!broker.enabled) continue;
     for (const model of broker.models.split(",").map((m) => m.trim()).filter(Boolean)) {
       ids.add(modelKey(model));
     }
