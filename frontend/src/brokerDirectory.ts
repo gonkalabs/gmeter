@@ -18,6 +18,14 @@ export interface BrokerDirectoryEntry {
 
 export const BROKER_DIRECTORY: BrokerDirectoryEntry[] = [
   {
+    id: "openbroker",
+    name: "OpenBroker by Gonka Labs",
+    siteUrl: "https://openbroker.gonka.gg/",
+    apiBaseUrl: "https://api.openbroker.gonka.gg/v1",
+    docsUrl: "https://openbroker.gonka.gg/docs",
+    matchHosts: ["openbroker.gonka.gg", "api.openbroker.gonka.gg"],
+  },
+  {
     id: "proxy-gonka",
     name: "proxy.gonka.gg",
     siteUrl: "https://proxy.gonka.gg/",

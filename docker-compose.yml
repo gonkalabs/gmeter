@@ -4,6 +4,8 @@ services:
     ports:
       - "8000:8000"
     environment:
+      OPENBROKER_API_KEY: ${OPENBROKER_API_KEY:-}
+      OPENBROKER_BASE_URL: ${OPENBROKER_BASE_URL:-https://api.openbroker.gonka.gg/v1}
       GONKA_API_KEY: ${GONKA_API_KEY:-}
       GONKA_BASE_URL: ${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}
       GONKA_MODELS: ${GONKA_MODELS:-moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7}

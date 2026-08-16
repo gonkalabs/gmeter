@@ -1,6 +1,25 @@
 {
   "brokers": [
     {
+      "name": "OpenBroker by Gonka Labs",
+      "base_url": "${OPENBROKER_BASE_URL:-https://api.openbroker.gonka.gg/v1}",
+      "api_key": "${OPENBROKER_API_KEY}",
+      "models": [
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
+      ]
+    },
+    {
       "name": "proxy.gonka.gg",
       "base_url": "${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}",
       "api_key": "${GONKA_API_KEY}",
