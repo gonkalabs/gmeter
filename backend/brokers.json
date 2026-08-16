@@ -5,8 +5,18 @@
       "base_url": "${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}",
       "api_key": "${GONKA_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -15,7 +25,8 @@
       "api_key": "${GONKAGATE_API_KEY}",
       "models": {
         "kimi-k2.6": "moonshotai/kimi-k2.6",
-        "minimax-m2.7": "minimaxai/minimax-m2.7"
+        "minimax-m2.7": "minimaxai/minimax-m2.7",
+        "deepseek-v4-flash": "deepseek-ai/deepseek-v4-flash-0731"
       }
     },
     {
@@ -23,8 +34,18 @@
       "base_url": "${MINGLES_BASE_URL:-https://router.mingles.ai/v1}",
       "api_key": "${MINGLES_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -32,8 +53,18 @@
       "base_url": "${GONKA_API_ORG_BASE_URL:-https://api.gonka-api.org/v1}",
       "api_key": "${GONKA_API_ORG_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -41,8 +72,18 @@
       "base_url": "${HYPERFUSION_BASE_URL:-https://api.hyperfusion.io/v1}",
       "api_key": "${HYPERFUSION_API_KEY}",
       "models": [
-        { "id": "gonka/moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "gonka/MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "gonka/moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "gonka/MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "gonka/deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -50,8 +91,18 @@
       "base_url": "${GONKASCAN_BASE_URL:-https://api.gonkascan.com/v1}",
       "api_key": "${GONKASCAN_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -59,8 +110,18 @@
       "base_url": "${JOINGONKA_BASE_URL:-https://gate.joingonka.ai/v1}",
       "api_key": "${JOINGONKA_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -68,8 +129,18 @@
       "base_url": "${GONKABROKER_BASE_URL:-https://proxy.gonkabroker.com/v1}",
       "api_key": "${GONKABROKER_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -78,8 +149,18 @@
       "api_key": "${GONKA24_API_KEY}",
       "enabled": false,
       "models": [
-        { "id": "kimi-k2.6", "alias": "kimi-k2.6" },
-        { "id": "minimax-m2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "kimi-k2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "minimax-m2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-v4-flash",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     },
     {
@@ -87,8 +168,18 @@
       "base_url": "${DAHL_BASE_URL:-https://inference.dahl.global/v1}",
       "api_key": "${DAHL_API_KEY}",
       "models": [
-        { "id": "moonshotai/Kimi-K2.6", "alias": "kimi-k2.6" },
-        { "id": "MiniMaxAI/MiniMax-M2.7", "alias": "minimax-m2.7" }
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "alias": "kimi-k2.6"
+        },
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "alias": "minimax-m2.7"
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "alias": "deepseek-v4-flash"
+        }
       ]
     }
   ]

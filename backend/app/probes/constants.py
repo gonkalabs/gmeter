@@ -1,6 +1,7 @@
 MODELS = [
     "moonshotai/Kimi-K2.6",
     "MiniMaxAI/MiniMax-M2.7",
+    "deepseek-ai/DeepSeek-V4-Flash-0731",
     "zai-org/GLM-5.2-FP8",
     "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
 ]
@@ -8,6 +9,7 @@ MODELS = [
 MODEL_LABELS = {
     "moonshotai/Kimi-K2.6": "kimi-k2.6",
     "MiniMaxAI/MiniMax-M2.7": "minimax-m2.7",
+    "deepseek-ai/DeepSeek-V4-Flash-0731": "deepseek-v4-flash",
     "zai-org/GLM-5.2-FP8": "glm-5.2",
     "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "qwen3-235b",
 }

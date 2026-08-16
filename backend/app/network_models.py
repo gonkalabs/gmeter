@@ -13,14 +13,17 @@ KNOWN_MODEL_LABELS: dict[str, str] = {
     "moonshotai/Kimi-K2.6": "Kimi K2.6",
     "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
     "MiniMaxAI/MiniMax-M2.7": "MiniMax M2.7",
+    "deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
     "zai-org/GLM-5.2-FP8": "GLM-5.2 FP8",
     "moonshotai/kimi-k2.6": "Kimi K2.6",
     "qwen/qwen3-235b-a22b-instruct-2507-fp8": "Qwen3 235B FP8",
     "minimaxai/minimax-m2.7": "MiniMax M2.7",
+    "deepseek-ai/deepseek-v4-flash-0731": "DeepSeek V4 Flash",
     "zai-org/glm-5.2-fp8": "GLM-5.2 FP8",
     "gonka/moonshotai/Kimi-K2.6": "Kimi K2.6",
     "gonka/Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
     "gonka/MiniMaxAI/MiniMax-M2.7": "MiniMax M2.7",
+    "gonka/deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
     "gonka/zai-org/GLM-5.2-FP8": "GLM-5.2 FP8",
 }
 
@@ -43,6 +46,7 @@ def active_model_ids() -> list[str]:
     defaults = [
         "moonshotai/Kimi-K2.6",
         "MiniMaxAI/MiniMax-M2.7",
+        "deepseek-ai/DeepSeek-V4-Flash-0731",
     ]
     return split_model_csv(settings.active_models) or defaults
 
@@ -52,6 +56,7 @@ def known_model_ids() -> list[str]:
     return split_model_csv(raw) or [
         "moonshotai/Kimi-K2.6",
         "MiniMaxAI/MiniMax-M2.7",
+        "deepseek-ai/DeepSeek-V4-Flash-0731",
         "zai-org/GLM-5.2-FP8",
         "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
     ]
@@ -162,4 +167,4 @@ def network_notice() -> str:
         verb = "is" if len(retired) == 1 else "are"
         parts.append(f"{retired_text} {verb} retired — historical probe data is kept.")
 
-    return "From Gonka epoch 309 onward, " + " ".join(parts)
+    return "From Gonka epoch 309 onward (DeepSeek V4 Flash added later), " + " ".join(parts)

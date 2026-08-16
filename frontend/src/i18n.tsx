@@ -90,7 +90,7 @@ const en = {
   "network.epochBadge": "Epoch 309",
   "network.epochTitle": "Network model update",
   "network.epochFallback":
-    "From Gonka epoch 309 onward, Kimi K2.6 and MiniMax M2.7 are active PoC models. GLM-5.2 FP8 is optional (voluntary for hosts). Qwen3 235B remains retired — historical data is kept.",
+    "From Gonka epoch 309 onward, Kimi K2.6, MiniMax M2.7, and DeepSeek V4 Flash are active PoC models. GLM-5.2 FP8 is optional (voluntary for hosts). Qwen3 235B remains retired — historical data is kept.",
   "network.readUpdate": "Read network update",
   "pricing.title": "Price comparison",
   "pricing.hint": "USD / 1M input & output · Gonka live probes vs worldwide public prices",
@@ -492,7 +492,7 @@ const ru: Record<keyof typeof en, string> = {
   "network.epochBadge": "Эпоха 309",
   "network.epochTitle": "Обновление моделей сети",
   "network.epochFallback":
-    "С эпохи Gonka 309 Kimi K2.6 и MiniMax M2.7 снова активны. GLM-5.2 FP8 — опциональная модель (хосты подключают добровольно). Qwen3 235B снята — исторические данные сохранены.",
+    "С эпохи Gonka 309 активны Kimi K2.6, MiniMax M2.7 и DeepSeek V4 Flash. GLM-5.2 FP8 — опциональная модель (хосты подключают добровольно). Qwen3 235B снята — исторические данные сохранены.",
   "network.readUpdate": "Подробнее об обновлении",
   "pricing.title": "Сравнение цен",
   "pricing.hint": "USD / 1 млн токенов · вход и выход · живые проверки Gonka vs мировые публичные цены",

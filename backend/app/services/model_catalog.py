@@ -90,6 +90,7 @@ def _default_broker_specs() -> list[BrokerSeedSpec]:
             model_aliases={
                 "moonshotai/Kimi-K2.6": "kimi-k2.6",
                 "MiniMaxAI/MiniMax-M2.7": "minimax-m2.7",
+                "deepseek-ai/DeepSeek-V4-Flash-0731": "deepseek-v4-flash",
             },
             api_key=os.environ.get("GONKA_API_KEY", ""),
             enabled=bool(os.environ.get("GONKA_API_KEY", "")),
@@ -100,12 +101,14 @@ def _default_broker_specs() -> list[BrokerSeedSpec]:
             models=split_model_ids(
                 os.environ.get(
                     "GONKAGATE_MODELS",
-                    "moonshotai/kimi-k2.6,minimaxai/minimax-m2.7,zai-org/glm-5.2-fp8",
+                    "moonshotai/kimi-k2.6,minimaxai/minimax-m2.7,"
+                    "deepseek-ai/deepseek-v4-flash-0731,zai-org/glm-5.2-fp8",
                 )
             ),
             model_aliases={
                 "moonshotai/kimi-k2.6": "kimi-k2.6",
                 "minimaxai/minimax-m2.7": "minimax-m2.7",
+                "deepseek-ai/deepseek-v4-flash-0731": "deepseek-v4-flash",
                 "zai-org/glm-5.2-fp8": "glm-5.2",
             },
             api_key=os.environ.get("GONKAGATE_API_KEY", ""),

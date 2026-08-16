@@ -33,6 +33,7 @@ def _friendly_label(model_id: str) -> str:
         "Kimi-K2.6": "Kimi K2.6",
         "Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
         "MiniMax-M2.7": "MiniMax M2.7",
+        "DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
         "GLM-5.2-FP8": "GLM-5.2 FP8",
     }
     return labels.get(tail, tail.replace("-", " "))
