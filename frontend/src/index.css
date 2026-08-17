@@ -2109,6 +2109,37 @@ a:hover {
   text-overflow: ellipsis;
 }
 
+.glance-provider-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.glance-provider-top .broker-link {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.glance-ai-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.glance-ai-btn:hover {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+}
+
 .glance-provider-host {
   font-size: 11px;
   color: var(--text-tertiary);
@@ -3601,15 +3632,15 @@ a:hover {
   text-decoration: underline;
 }
 
-.glance-provider-ai {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-tertiary);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.ai-summary-modal {
+  max-width: 520px;
+}
+
+.ai-summary-modal-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-primary);
 }
 
 @media (max-width: 720px) {
