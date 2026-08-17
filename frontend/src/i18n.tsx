@@ -92,7 +92,7 @@ const en = {
   "network.epochFallback":
     "From Gonka epoch 309 onward, Kimi K2.6, MiniMax M2.7, and DeepSeek V4 Flash are active PoC models. GLM-5.2 FP8 is optional (voluntary for hosts). Qwen3 235B remains retired — historical data is kept.",
   "network.readUpdate": "Read network update",
-  "network.aiBadge": "Live AI status",
+  "network.aiBadge": "AI status",
   "network.aiTitle": "Network summary",
   "network.aiMeta": "DeepSeek · {model} · {time}",
   "network.showEpoch": "Show epoch notes",
