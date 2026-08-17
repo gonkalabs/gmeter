@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     public_read_only: bool = True
     run_probe_on_startup: bool = True
     run_limits_on_startup: bool = False
+    ai_summary_enabled: bool = True
+    ai_summary_model: str = "deepseek-ai/DeepSeek-V4-Flash-0731"
+    ai_summary_base_url: str = ""
+    ai_summary_api_key: str = ""
+    ai_summary_interval_minutes: int = 15
 
 
 settings = Settings()

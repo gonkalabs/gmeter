@@ -72,6 +72,7 @@ export interface ProviderBlock {
   latest_run_at: string | null;
   metrics: MetricBlock[];
   models: ModelBlock[];
+  ai_summary?: string | null;
 }
 
 export interface DashboardDetail {
@@ -80,6 +81,9 @@ export interface DashboardDetail {
   network_models?: NetworkModelStatus[];
   network_notice?: string | null;
   network_update_url?: string | null;
+  ai_network_summary?: string | null;
+  ai_summary_model?: string | null;
+  ai_summary_at?: string | null;
 }
 
 export interface ProbeResult {

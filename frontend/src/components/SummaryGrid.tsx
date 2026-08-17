@@ -95,6 +95,11 @@ function ProviderRow({
             })}
           </time>
         )}
+        {provider.ai_summary ? (
+          <p className="glance-provider-ai" title={provider.ai_summary}>
+            {provider.ai_summary}
+          </p>
+        ) : null}
       </div>
 
       {GLANCE_COLUMNS.map((key) => {

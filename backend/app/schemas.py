@@ -126,6 +126,7 @@ class ProviderBlock(BaseModel):
     latest_run_at: datetime | None = None
     metrics: list[MetricBlock]
     models: list[ModelBlock] = Field(default_factory=list)
+    ai_summary: str | None = None
 
 
 class DashboardDetail(BaseModel):
@@ -134,6 +135,9 @@ class DashboardDetail(BaseModel):
     network_models: list[NetworkModelStatus] = Field(default_factory=list)
     network_notice: str | None = None
     network_update_url: str | None = None
+    ai_network_summary: str | None = None
+    ai_summary_model: str | None = None
+    ai_summary_at: datetime | None = None
 
 
 class RunRequest(BaseModel):

@@ -33,6 +33,7 @@ from app.services.pricing import (
     fetch_broker_split_pricing,
     spend_values_for_scope,
 )
+from app.services.ai_summary import get_broker_summaries, get_network_summary
 
 
 def _build_logs(
@@ -289,12 +290,22 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
         for item in network_model_catalog()
     ]
 
+    network_ai = get_network_summary(db)
+    broker_ai = get_broker_summaries(db)
+    for provider in providers:
+        summary = broker_ai.get(provider.broker_id)
+        if summary and summary.text.strip():
+            provider.ai_summary = summary.text.strip()
+
     return DashboardDetail(
         aggregate=aggregate,
         providers=providers,
         network_models=network_status,
         network_notice=network_notice() or None,
         network_update_url=NETWORK_UPDATE_URL,
+        ai_network_summary=(network_ai.text.strip() if network_ai and network_ai.text else None),
+        ai_summary_model=(network_ai.model if network_ai else None),
+        ai_summary_at=(network_ai.generated_at if network_ai else None),
     )
 
 

@@ -194,6 +194,11 @@ function ProviderListItem({
             })}
           </span>
         )}
+        {provider.ai_summary ? (
+          <span className="entity-ai" title={provider.ai_summary}>
+            {provider.ai_summary}
+          </span>
+        ) : null}
       </div>
     </li>
   );

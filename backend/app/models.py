@@ -58,3 +58,15 @@ class ProbeResult(Base):
     gonka_limitation: Mapped[bool] = mapped_column(Boolean, default=False)
 
     run: Mapped["ProbeRun"] = relationship(back_populates="results")
+
+
+class AiSummary(Base):
+    __tablename__ = "ai_summaries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope: Mapped[str] = mapped_column(String(32), index=True)
+    broker_id: Mapped[int | None] = mapped_column(ForeignKey("brokers.id"), nullable=True, index=True)
+    text: Mapped[str] = mapped_column(Text, default="")
+    model: Mapped[str] = mapped_column(String(256), default="")
+    source_hash: Mapped[str] = mapped_column(String(64), default="")
+    generated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

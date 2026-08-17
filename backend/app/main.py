@@ -12,6 +12,7 @@ from app.database import Base, SessionLocal, engine
 from app.models import Broker, ProbeRun
 from app.services.model_catalog import configured_broker_specs
 from app.services.runner import run_probe_suite
+from app.services.ai_summary import refresh_ai_summaries
 
 
 def migrate_schema():
@@ -118,6 +119,21 @@ def scheduled_probe(mode: str = "quick"):
                 run_probe_suite(db, broker, mode=mode)
             except Exception:
                 pass
+        if mode == "quick":
+            try:
+                refresh_ai_summaries(db)
+            except Exception:
+                pass
+    finally:
+        db.close()
+
+
+def scheduled_ai_summary():
+    db = SessionLocal()
+    try:
+        refresh_ai_summaries(db)
+    except Exception:
+        pass
     finally:
         db.close()
 
@@ -145,6 +161,10 @@ def startup_probe():
                 run_probe_suite(db, broker, mode="quick")
             except Exception:
                 pass
+        try:
+            refresh_ai_summaries(db)
+        except Exception:
+            pass
     finally:
         db.close()
 
@@ -168,7 +188,15 @@ async def lifespan(_app: FastAPI):
         id="probe_limits",
         replace_existing=True,
     )
+    scheduler.add_job(
+        scheduled_ai_summary,
+        "interval",
+        minutes=max(5, settings.ai_summary_interval_minutes),
+        id="ai_summary",
+        replace_existing=True,
+    )
     scheduler.start()
+    threading.Thread(target=scheduled_ai_summary, daemon=True).start()
     if settings.run_probe_on_startup:
         threading.Thread(target=startup_probe, daemon=True).start()
     if settings.run_limits_on_startup:
