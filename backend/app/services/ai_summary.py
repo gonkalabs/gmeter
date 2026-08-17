@@ -74,13 +74,17 @@ def _broker_snapshot(db: Session, broker: Broker) -> dict[str, Any]:
         for model_id, rows in by_model.items():
             total = len(rows)
             failed = sum(1 for r in rows if not r.ok)
-            errors = [r.error for r in rows if r.error][:2]
+            errors = [r.error for r in rows if r.error][:3]
+            failed_tests = sorted({r.test_name for r in rows if not r.ok})
             latencies = [r.latency_s for r in rows if r.latency_s is not None]
             speeds = [r.tps or r.stream_tps for r in rows if (r.tps or r.stream_tps)]
             model_notes.append(
                 {
                     "model": label_for_model(model_id, aliases),
+                    "checks": total,
+                    "failed_checks": failed,
                     "fail_pct": round(100.0 * failed / total, 1) if total else 0,
+                    "failed_tests": failed_tests,
                     "avg_latency_s": round(sum(latencies) / len(latencies), 2) if latencies else None,
                     "avg_tps": round(sum(speeds) / len(speeds), 1) if speeds else None,
                     "sample_errors": errors,
@@ -118,10 +122,27 @@ def build_status_snapshot(db: Session) -> dict[str, Any]:
     down = sum(1 for row in broker_rows if row["health"] == "down")
     return {
         "generated_for": "gmeter",
+        "prompt_version": 2,
         "broker_count": len(broker_rows),
         "healthy": healthy,
         "degraded": degraded,
         "down": down,
+        "glossary": {
+            "billing unavailable": (
+                "The broker answered inference requests, but G-Meter could not read a live "
+                "USD/token price from the response headers or /pricing metadata. This usually "
+                "means cost gauges may be blank — it is not by itself an inference outage."
+            ),
+            "pricing_probe": (
+                "A check that asks whether the broker exposes usable pricing/billing signals "
+                "for spend estimation."
+            ),
+            "failed_probes_pct": (
+                "Share of non-pricing probe steps that failed in the latest quick run "
+                "(latency, output, tools, JSON, etc.)."
+            ),
+            "api_uptime": "Whether GET /models (connectivity) succeeded for the broker gateway.",
+        },
         "brokers": broker_rows,
     }
 
@@ -153,16 +174,22 @@ def _extract_json(text: str) -> dict[str, Any] | None:
 def _call_deepseek(base_url: str, api_key: str, model: str, snapshot: dict[str, Any]) -> dict[str, Any]:
     broker_names = [b["name"] for b in snapshot.get("brokers") or []]
     system = (
-        "You are the status writer for G-Meter, a Gonka network broker observability dashboard. "
-        "Write concise, factual English status copy from probe metrics only. "
-        "Do not invent outages or praise. Mention concrete issues (auth, credits, latency, "
-        "model failures) when present. Return JSON only."
+        "You are the status analyst for G-Meter, a Gonka network broker observability dashboard. "
+        "Write clear, insightful English for operators. Use only the provided probe metrics and glossary. "
+        "Explain jargon in plain language when it appears (especially billing unavailable, auth errors, "
+        "credits/tokens exhausted, rate limits, model not available). "
+        "Do not invent outages. Distinguish inference health from pricing/metadata gaps. "
+        "Return JSON only."
     )
     user = {
         "instruction": (
-            "Summarize current Gonka broker health. "
-            "network: 2-3 sentences covering overall network status across all brokers. "
-            "brokers: map each broker name to exactly one sentence (max ~28 words). "
+            "Write richer status copy for the current Gonka broker set.\n"
+            "- network: 4-6 sentences. Cover overall health mix, the main recurring issues, "
+            "and what operators should take away right now.\n"
+            "- brokers: map each broker name to a short paragraph of 3-5 sentences "
+            "(about 60-110 words). Include latency/speed when useful, call out failing tests, "
+            "and explain what any error means for users (e.g. if billing is unavailable, say "
+            "inference may still work but live cost estimates are missing).\n"
             "Use these exact broker name keys: " + ", ".join(broker_names)
         ),
         "schema": {
@@ -177,11 +204,11 @@ def _call_deepseek(base_url: str, api_key: str, model: str, snapshot: dict[str, 
             {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
         ],
-        "temperature": 0.2,
-        "max_tokens": 1200,
+        "temperature": 0.25,
+        "max_tokens": 3500,
         "response_format": {"type": "json_object"},
     }
-    with httpx.Client(timeout=90) as client:
+    with httpx.Client(timeout=120) as client:
         resp = client.post(
             f"{base_url}/chat/completions",
             headers={

@@ -3633,14 +3633,15 @@ a:hover {
 }
 
 .ai-summary-modal {
-  max-width: 520px;
+  max-width: 560px;
 }
 
 .ai-summary-modal-text {
   margin: 0;
   font-size: 15px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--text-primary);
+  white-space: pre-wrap;
 }
 
 @media (max-width: 720px) {
