@@ -85,7 +85,7 @@ def _default_broker_specs() -> list[BrokerSeedSpec]:
     return [
         BrokerSeedSpec(
             name="proxy.gonka.gg",
-            base_url=os.environ.get("GONKA_BASE_URL", "https://proxy.gonka.gg/v1"),
+            base_url=os.environ.get("GONKA_BASE_URL", "https://api.proxy.gonka.gg/v1"),
             models=split_model_ids(os.environ.get("GONKA_MODELS", settings.default_models)),
             model_aliases={
                 "moonshotai/Kimi-K2.6": "kimi-k2.6",

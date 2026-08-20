@@ -29,11 +29,11 @@ export const BROKER_DIRECTORY: BrokerDirectoryEntry[] = [
     id: "proxy-gonka",
     name: "proxy.gonka.gg",
     siteUrl: "https://proxy.gonka.gg/",
-    apiBaseUrl: "https://proxy.gonka.gg/v1",
+    apiBaseUrl: "https://api.proxy.gonka.gg/v1",
     chatUrl: "https://proxy.gonka.gg/chat",
     chatNoteKey: "start.chatNote.proxy",
     demoUrl: "https://drive.google.com/file/d/1-Zk__4cY_ENi0Q8gw-JHgEBz6XZWXKAj/view",
-    matchHosts: ["proxy.gonka.gg"],
+    matchHosts: ["proxy.gonka.gg", "api.proxy.gonka.gg"],
   },
   {
     id: "gonkagate",

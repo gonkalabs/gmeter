@@ -29,7 +29,7 @@ def _summary_client() -> tuple[str, str, str] | None:
         return None
     base = (
         settings.ai_summary_base_url.strip()
-        or os.environ.get("GONKA_BASE_URL", "https://proxy.gonka.gg/v1")
+        or os.environ.get("GONKA_BASE_URL", "https://api.proxy.gonka.gg/v1")
     ).rstrip("/")
     key = settings.ai_summary_api_key.strip() or os.environ.get("GONKA_API_KEY", "")
     model = settings.ai_summary_model.strip() or "deepseek-ai/DeepSeek-V4-Flash-0731"

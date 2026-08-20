@@ -12,7 +12,7 @@ interface Props {
 export function BrokerPanel({ brokers, onChanged }: Props) {
   const { t } = useI18n();
   const [name, setName] = useState("");
-  const [baseUrl, setBaseUrl] = useState("https://proxy.gonka.gg/v1");
+  const [baseUrl, setBaseUrl] = useState("https://api.proxy.gonka.gg/v1");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState(
     "moonshotai/Kimi-K2.6,Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"

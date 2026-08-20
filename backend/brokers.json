@@ -21,7 +21,7 @@
     },
     {
       "name": "proxy.gonka.gg",
-      "base_url": "${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}",
+      "base_url": "${GONKA_BASE_URL:-https://api.proxy.gonka.gg/v1}",
       "api_key": "${GONKA_API_KEY}",
       "models": [
         {

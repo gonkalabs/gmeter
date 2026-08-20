@@ -7,7 +7,7 @@ services:
       OPENBROKER_API_KEY: ${OPENBROKER_API_KEY:-}
       OPENBROKER_BASE_URL: ${OPENBROKER_BASE_URL:-https://api.openbroker.gonka.gg/v1}
       GONKA_API_KEY: ${GONKA_API_KEY:-}
-      GONKA_BASE_URL: ${GONKA_BASE_URL:-https://proxy.gonka.gg/v1}
+      GONKA_BASE_URL: ${GONKA_BASE_URL:-https://api.proxy.gonka.gg/v1}
       GONKA_MODELS: ${GONKA_MODELS:-moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7}
       DATABASE_URL: sqlite:////app/data/gmeter.db
       DEFAULT_MODELS: ${DEFAULT_MODELS:-moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7}
