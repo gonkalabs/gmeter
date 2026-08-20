@@ -541,8 +541,8 @@ function ModelPriceVisual({
             {gonkaRange && (
               <PriceLadderRow
                 label={t("pricing.gonkaBrokers")}
-                inputValue={gonkaRange.input.avg}
-                outputValue={gonkaRange.output.avg}
+                inputValue={gonkaRange.input.low}
+                outputValue={gonkaRange.output.low}
                 inputDomain={inputDomain}
                 outputDomain={outputDomain}
                 gonkaInputLow={gonkaRange.input.low}

@@ -115,12 +115,12 @@ export function buildModelPricingStats(
   let cheaperLabel: string | null = null;
   if (gonkaRange) {
     const inputRatio =
-      worldInputAverage && gonkaRange.input.avg > 0
-        ? worldInputAverage / gonkaRange.input.avg
+      worldInputAverage && gonkaRange.input.low > 0
+        ? worldInputAverage / gonkaRange.input.low
         : null;
     const outputRatio =
-      worldOutputAverage && gonkaRange.output.avg > 0
-        ? worldOutputAverage / gonkaRange.output.avg
+      worldOutputAverage && gonkaRange.output.low > 0
+        ? worldOutputAverage / gonkaRange.output.low
         : null;
     const ratios = [inputRatio, outputRatio].filter(
       (value): value is number => value != null && value > 1.05
@@ -274,8 +274,8 @@ export function openRouterCheapest(stats: ModelPricingStats): PriceSummaryRow | 
 
 export function buildPriceSummaryRows(stats: ModelPricingStats, limit = 5): PriceSummaryRow[] {
   const rows: PriceSummaryRow[] = [];
-  const gonkaOutput = stats.gonkaRange?.output.avg ?? stats.gonkaRange?.output.low ?? null;
-  const gonkaInput = stats.gonkaRange?.input.avg ?? stats.gonkaRange?.input.low ?? null;
+  const gonkaOutput = stats.gonkaRange?.output.low ?? null;
+  const gonkaInput = stats.gonkaRange?.input.low ?? null;
 
   if (gonkaOutput != null && gonkaOutput > 0) {
     rows.push({
@@ -307,8 +307,8 @@ export function buildPriceSummaryRows(stats: ModelPricingStats, limit = 5): Pric
 
 export function buildPriceDetailRows(stats: ModelPricingStats): PriceSummaryRow[] {
   const rows: PriceSummaryRow[] = [];
-  const gonkaOutput = stats.gonkaRange?.output.avg ?? stats.gonkaRange?.output.low ?? null;
-  const gonkaInput = stats.gonkaRange?.input.avg ?? stats.gonkaRange?.input.low ?? null;
+  const gonkaOutput = stats.gonkaRange?.output.low ?? null;
+  const gonkaInput = stats.gonkaRange?.input.low ?? null;
 
   if (gonkaOutput != null && gonkaOutput > 0) {
     rows.push({

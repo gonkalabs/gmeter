@@ -169,13 +169,11 @@ function ComparePriceCard({
   const inputDomain = buildSharedDomain([
     gonkaRange?.input.low,
     gonkaRange?.input.high,
-    gonkaRange?.input.avg,
     inputMedian,
   ]);
   const outputDomain = buildSharedDomain([
     gonkaRange?.output.low,
     gonkaRange?.output.high,
-    gonkaRange?.output.avg,
     outputMedian,
   ]);
 
@@ -269,7 +267,7 @@ function ComparePriceCard({
           inputDomain,
           gonkaRange?.input.low ?? null,
           gonkaRange?.input.high ?? null,
-          gonkaRange?.input.avg ?? null,
+          gonkaRange?.input.low ?? null,
           inputMedian
         )}
         {renderTrack(
@@ -277,7 +275,7 @@ function ComparePriceCard({
           outputDomain,
           gonkaRange?.output.low ?? null,
           gonkaRange?.output.high ?? null,
-          gonkaRange?.output.avg ?? null,
+          gonkaRange?.output.low ?? null,
           outputMedian
         )}
       </div>
@@ -442,7 +440,7 @@ export function ComparePage() {
                   label={t("pricing.inputShort")}
                   gonkaLow={heroModel.gonkaRange.input.low}
                   gonkaHigh={heroModel.gonkaRange.input.high}
-                  gonkaAvg={heroModel.gonkaRange.input.avg}
+                  gonkaAvg={heroModel.gonkaRange.input.low}
                   marketMedian={median(
                     heroModel.competitors
                       .map((row) => row.inputPerM)
@@ -454,7 +452,7 @@ export function ComparePage() {
                   label={t("pricing.outputShort")}
                   gonkaLow={heroModel.gonkaRange.output.low}
                   gonkaHigh={heroModel.gonkaRange.output.high}
-                  gonkaAvg={heroModel.gonkaRange.output.avg}
+                  gonkaAvg={heroModel.gonkaRange.output.low}
                   marketMedian={median(
                     heroModel.competitors
                       .map((row) => row.outputPerM)
