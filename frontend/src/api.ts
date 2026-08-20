@@ -58,4 +58,5 @@ export const api = {
     request<ProbeRun[]>(
       `/runs${brokerId ? `?broker_id=${brokerId}&limit=50` : "?limit=50"}`
     ),
+  getRun: (runId: number) => request<ProbeRun>(`/runs/${runId}`),
 };

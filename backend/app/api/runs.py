@@ -39,6 +39,7 @@ def list_runs(
     broker_id: int | None = None,
     run_type: str | None = None,
     limit: int = 20,
+    include_detail: bool = False,
     db: Session = Depends(get_db),
 ):
     q = (
@@ -50,8 +51,8 @@ def list_runs(
         q = q.filter(ProbeRun.broker_id == broker_id)
     if run_type:
         q = q.filter(ProbeRun.run_type == run_type)
-    runs = q.limit(limit).all()
-    return [_to_out(r) for r in runs]
+    runs = q.limit(min(limit, 100)).all()
+    return [_to_out(r, include_detail=include_detail) for r in runs]
 
 
 @router.get("/{run_id}", response_model=ProbeRunOut)
@@ -64,7 +65,7 @@ def get_run(run_id: int, db: Session = Depends(get_db)):
     )
     if not run:
         raise HTTPException(404, "Run not found")
-    return _to_out(run)
+    return _to_out(run, include_detail=True)
 
 
 @router.post("/broker/{broker_id}", response_model=ProbeRunOut, status_code=202)
@@ -86,7 +87,7 @@ def start_run(
     mode = req.mode or ("quick" if req.quick else "full")
     if sync or mode in ("quick", "limits"):
         run = run_probe_suite(db, broker, models=req.models, mode=mode)
-        return _to_out(run)
+        return _to_out(run, include_detail=False)
 
     run = ProbeRun(broker_id=broker.id, status="queued", run_type=mode)
     db.add(run)
@@ -99,10 +100,10 @@ def start_run(
         daemon=True,
     )
     thread.start()
-    return _to_out(run)
+    return _to_out(run, include_detail=False)
 
 
-def _to_out(run: ProbeRun) -> ProbeRunOut:
+def _to_out(run: ProbeRun, *, include_detail: bool = True) -> ProbeRunOut:
     return ProbeRunOut(
         id=run.id,
         broker_id=run.broker_id,
@@ -124,7 +125,7 @@ def _to_out(run: ProbeRun) -> ProbeRunOut:
                 stream_tps=r.stream_tps,
                 tokens_in=r.tokens_in,
                 tokens_out=r.tokens_out,
-                detail=r.detail,
+                detail=(r.detail if include_detail else None),
                 error=r.error,
                 gonka_limitation=r.gonka_limitation,
             )

@@ -1,5 +1,6 @@
 import { Fragment, useState } from "react";
 import type { Broker, ProbeResult, ProbeRun } from "../types";
+import { api } from "../api";
 import { testLabel } from "../probeTest";
 import { TestDetailModal } from "./TestDetailModal";
 import { useI18n } from "../i18n";
@@ -21,6 +22,7 @@ export function RunHistory({ runs, brokers, loading }: Props) {
   const { t, formatDate } = useI18n();
   const [expanded, setExpanded] = useState<number | null>(null);
   const [selected, setSelected] = useState<SelectedTest | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const brokerName = (brokerId: number) =>
     brokers.find((b) => b.id === brokerId)?.name;
@@ -36,6 +38,23 @@ export function RunHistory({ runs, brokers, loading }: Props) {
     if (runType === "limits") return t("runType.limits");
     if (runType === "full") return t("runType.full");
     return t("runType.quick");
+  };
+
+  const openTest = async (run: ProbeRun, result: ProbeResult) => {
+    if (result.detail != null) {
+      setSelected({ run, result });
+      return;
+    }
+    setLoadingDetail(true);
+    try {
+      const full = await api.getRun(run.id);
+      const fullResult = full.results.find((item) => item.id === result.id) ?? result;
+      setSelected({ run: full, result: fullResult });
+    } catch {
+      setSelected({ run, result });
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   if (loading && runs.length === 0) {
@@ -121,7 +140,8 @@ export function RunHistory({ runs, brokers, loading }: Props) {
                           type="button"
                           className="test-item test-item-btn"
                           key={r.id}
-                          onClick={() => setSelected({ run, result: r })}
+                          onClick={() => openTest(run, r)}
+                          disabled={loadingDetail}
                         >
                           <div className="test-left">
                             <span className={`test-dot ${r.ok ? "pass" : "fail"}`} />

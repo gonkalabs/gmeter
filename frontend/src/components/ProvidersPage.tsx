@@ -14,6 +14,19 @@ import { useI18n, type TranslationKey } from "../i18n";
 import { hostFromUrl } from "../brokerLinks";
 import { ProbeLogTable } from "./ProbeLogTable";
 
+function metricProbeCount(metric: MetricBlock) {
+  if (metric.logs.length > 0) return metric.logs.length;
+  const breakdown = metric.raw?.test_breakdown;
+  if (Array.isArray(breakdown)) {
+    return breakdown.reduce(
+      (sum: number, row: { total?: number }) => sum + (Number(row.total) || 0),
+      0
+    );
+  }
+  const failed = metric.raw?.failed_probes;
+  return typeof failed === "number" ? failed : 0;
+}
+
 interface Props {
   detail: DashboardDetail | null;
   loading: boolean;
@@ -221,7 +234,7 @@ function ModelDetail({
 
   const selectedMetric = model
     ? model.metrics.find((metric) => metric.key === selectedMetricKey) ??
-      model.metrics.find((metric) => metric.logs.length > 0) ??
+      model.metrics.find((metric) => metricProbeCount(metric) > 0) ??
       model.metrics[0]
     : null;
 
@@ -327,7 +340,7 @@ function ModelDetail({
                     {healthLabel(tone, t)}
                   </span>
                   <span className="model-summary-logs" role="cell">
-                    {metric.logs.length}
+                    {metricProbeCount(metric)}
                   </span>
                 </button>
               );
@@ -351,7 +364,7 @@ function ModelDetail({
                   title={meta?.help}
                 >
                   <span>{meta?.label ?? metric.label}</span>
-                  <strong>{metric.logs.length}</strong>
+                  <strong>{metricProbeCount(metric)}</strong>
                 </button>
               );
             })}

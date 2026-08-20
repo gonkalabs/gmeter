@@ -28,11 +28,7 @@ from app.services.dashboard import (
 )
 from app.services.metrics import get_dashboard_metrics
 from app.services.model_catalog import broker_model_aliases, broker_model_ids
-from app.services.pricing import (
-    fetch_broker_pricing,
-    fetch_broker_split_pricing,
-    spend_values_for_scope,
-)
+from app.services.pricing import spend_values_for_scope
 from app.services.ai_summary import get_broker_summaries, get_network_summary
 
 
@@ -209,21 +205,18 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
 
         measured_at = run.finished_at or run.started_at
         model_ids = sorted({r.model for r in run.results if r.model != "broker"})
-        live_prices, _ = fetch_broker_pricing(broker.base_url, api_key=broker.api_key)
-        live_split, _ = fetch_broker_split_pricing(
-            broker.base_url, api_key=broker.api_key
-        )
+        # Dashboard path: do not call every broker's pricing HTTP APIs (that made
+        # /metrics/dashboard/detail multi-second). Prefer last probe-run summary;
+        # /metrics/pricing/comparison still does live market pricing.
         result_rows = [_result_row(r, include_detail=False) for r in run.results]
         spend = spend_values_for_scope(
             rows=result_rows,
             model=None,
             configured_models=configured,
-            prices=live_prices,
-            split_prices=live_split,
+            prices={},
+            split_prices={},
         )
-        if not spend.get("pricing_available") and run.summary and run.summary.get(
-            "real_spend_per_m"
-        ):
+        if run.summary and run.summary.get("real_spend_per_m") is not None:
             spend = {
                 "pricing_available": True,
                 "real_spend_per_m": run.summary.get("real_spend_per_m"),
@@ -244,10 +237,10 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                     measured_at=measured_at,
                     provider_name=broker.name,
                     configured_models=configured,
-                    prices=live_prices,
+                    prices={},
                     aliases=aliases,
                     spend_values=spend,
-                    include_logs=True,
+                    include_logs=False,
                     include_detail=False,
                 ),
                 models=[
@@ -262,16 +255,16 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                             provider_name=broker.name,
                             model=model_id,
                             configured_models=configured,
-                            prices=live_prices,
+                            prices={},
                             aliases=aliases,
                             spend_values=spend_values_for_scope(
                                 rows=result_rows,
                                 model=model_id,
                                 configured_models=configured,
-                                prices=live_prices,
-                                split_prices=live_split,
+                                prices={},
+                                split_prices={},
                             ),
-                            include_logs=True,
+                            include_logs=False,
                             include_detail=False,
                         ),
                     )
