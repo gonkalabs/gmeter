@@ -546,14 +546,48 @@ def _parse_models_list_split_pricing(data: dict[str, Any]) -> dict[str, dict[str
     return prices
 
 
+def _parse_eterial_public_pricing(data: dict[str, Any]) -> dict[str, dict[str, float]]:
+    prices: dict[str, dict[str, float]] = {}
+    items = data.get("data") or data.get("models") or []
+    if not isinstance(items, list):
+        return prices
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        model_id = item.get("id") or item.get("model_id")
+        gonka = item.get("gonka")
+        if not model_id or not isinstance(gonka, dict):
+            continue
+        split: dict[str, float] = {}
+        input_rate = _as_float(gonka.get("input"))
+        output_rate = _as_float(gonka.get("output"))
+        if input_rate is not None and input_rate > 0:
+            split["input"] = input_rate
+        if output_rate is not None and output_rate > 0:
+            split["output"] = output_rate
+        if split:
+            prices[normalize_model_id(str(model_id))] = split
+    return prices
+
+
 def _fetch_live_split_pricing(
     base_url: str, api_key: str | None = None
 ) -> tuple[dict[str, dict[str, float]], str | None]:
     origin = pricing_origin(base_url)
+    host = urlparse(origin).netloc.lower()
     headers = _auth_headers(api_key)
 
     try:
         with httpx.Client(timeout=10, follow_redirects=True) as client:
+            if "eterial.ai" in host:
+                response = client.get("https://public.eterial.ai/pricing")
+                if response.status_code == 200:
+                    payload = response.json()
+                    if isinstance(payload, dict):
+                        prices = _parse_eterial_public_pricing(payload)
+                        if prices:
+                            return prices, "https://public.eterial.ai/pricing"
+
             response = client.get(f"{origin}/api/pricing", headers=headers)
             if response.status_code == 200:
                 payload = response.json()

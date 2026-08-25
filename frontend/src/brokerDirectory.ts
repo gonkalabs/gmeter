@@ -86,6 +86,14 @@ export const BROKER_DIRECTORY: BrokerDirectoryEntry[] = [
     matchHosts: ["gate.joingonka.ai", "joingonka.ai"],
   },
   {
+    id: "eterial",
+    name: "eterial.ai",
+    siteUrl: "https://eterial.ai/",
+    apiBaseUrl: "https://chat.eterial.ai/v1",
+    docsUrl: "https://eterial.ai/docs",
+    matchHosts: ["eterial.ai", "chat.eterial.ai", "dashboard.eterial.ai"],
+  },
+  {
     id: "dahl",
     name: "inference.dahl.global",
     siteUrl: "https://inference.dahl.global",

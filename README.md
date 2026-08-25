@@ -57,6 +57,7 @@ Useful variables:
 | `GONKA_API_ORG_API_KEY` | API key for `gonka-api.org` |
 | `HYPERFUSION_API_KEY` | API key for `console.hyperfusion.io` |
 | `GONKASCAN_API_KEY` | API key for `router.gonkascan.com` |
+| `ETERIAL_API_KEY` | API key for `eterial.ai` |
 | `BROKERS_CONFIG_PATH` | JSON broker catalog path inside the backend container |
 | `BROKERS_CONFIG_JSON` | Inline JSON broker catalog; takes priority over file config |
 | `PROBE_INTERVAL_MINUTES` | Quick probe interval |

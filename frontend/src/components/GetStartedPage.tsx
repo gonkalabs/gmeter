@@ -388,7 +388,7 @@ export function GetStartedPage() {
                   <div className="start-docs-actions">
                     <a
                       className="compare-btn compare-btn-primary"
-                      href={selectedEntry.siteUrl}
+                      href={selectedEntry.docsUrl ?? selectedEntry.siteUrl}
                       target="_blank"
                       rel="noreferrer"
                     >

@@ -25,6 +25,10 @@ KNOWN_MODEL_LABELS: dict[str, str] = {
     "gonka/MiniMaxAI/MiniMax-M2.7": "MiniMax M2.7",
     "gonka/deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
     "gonka/zai-org/GLM-5.2-FP8": "GLM-5.2 FP8",
+    "kimi-k2.6": "Kimi K2.6",
+    "minimax-m2.7": "MiniMax M2.7",
+    "deepseek-v4-flash": "DeepSeek V4 Flash",
+    "glm-5.2": "GLM-5.2 FP8",
 }
 
 OPTIONAL_MODEL_PATTERNS = ("glm-5.2",)
@@ -66,13 +70,23 @@ def _active_normalized() -> set[str]:
     return {normalize_model_id(model_id) for model_id in active_model_ids()}
 
 
+def _tails_compatible(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    shorter, longer = (left, right) if len(left) <= len(right) else (right, left)
+    return bool(shorter) and longer.startswith(f"{shorter}-")
+
+
 def is_active_model(model_id: str) -> bool:
     normalized = normalize_model_id(model_id)
     active = _active_normalized()
     if normalized in active:
         return True
     tail = normalized.split("/")[-1]
-    return any(normalize_model_id(item).split("/")[-1] == tail for item in active_model_ids())
+    return any(
+        _tails_compatible(tail, normalize_model_id(item).split("/")[-1])
+        for item in active_model_ids()
+    )
 
 
 def is_optional_model(model_id: str) -> bool:
