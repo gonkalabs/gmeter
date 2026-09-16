@@ -3,8 +3,29 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.config import settings
 from app.models import Broker, ProbeRun
+from app.network_models import is_active_model, is_deprecated_model
 from app.schemas import LimitLadderStep, LimitsDetail, ModelLimits, ProviderLimits
-from app.services.model_catalog import broker_model_aliases, label_for_model
+from app.services.model_catalog import broker_model_aliases, broker_model_ids, label_for_model
+
+
+def _configured_limit_models(broker: Broker) -> list[str]:
+    return [
+        model_id
+        for model_id in broker_model_ids(broker)
+        if is_active_model(model_id) and not is_deprecated_model(model_id)
+    ]
+
+
+def _merge_limit_model_ids(from_run: list[str], configured: list[str]) -> list[str]:
+    seen: set[str] = set()
+    merged: list[str] = []
+    for model_id in [*from_run, *configured]:
+        key = model_id.strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        merged.append(model_id)
+    return merged
 
 
 def get_limits_detail(db: Session) -> LimitsDetail:
@@ -12,6 +33,7 @@ def get_limits_detail(db: Session) -> LimitsDetail:
 
     for broker in db.query(Broker).filter(Broker.enabled.is_(True)).order_by(Broker.name):
         aliases = broker_model_aliases(broker)
+        configured = _configured_limit_models(broker)
         run = (
             db.query(ProbeRun)
             .options(joinedload(ProbeRun.results))
@@ -30,11 +52,28 @@ def get_limits_detail(db: Session) -> LimitsDetail:
                     broker_id=broker.id,
                     broker_name=broker.name,
                     base_url=broker.base_url,
+                    models=[
+                        ModelLimits(
+                            model=model_id,
+                            label=label_for_model(model_id, aliases),
+                            max_input_ok=False,
+                            max_input_k=0,
+                            max_input_error="not tested",
+                            max_output_ok=False,
+                            max_output_tokens=0,
+                            max_output_required=settings.min_output_tokens,
+                            max_output_error="not tested",
+                        )
+                        for model_id in configured
+                    ],
                 )
             )
             continue
 
-        model_ids = sorted({r.model for r in run.results if r.model != "broker"})
+        model_ids = _merge_limit_model_ids(
+            sorted({r.model for r in run.results if r.model != "broker"}),
+            configured,
+        )
         models: list[ModelLimits] = []
 
         for model_id in model_ids:

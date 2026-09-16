@@ -100,10 +100,10 @@ export function LimitsPage({ limits, loading, probing }: Props) {
           </div>
 
           <div className="limits-detail">
-            {!active?.run_id ? (
-              <p className="col-hint">{t("limits.noData")}</p>
-            ) : (
+            {active?.models.length ? (
               active.models.map((model) => <ModelLimitsCard key={model.model} model={model} />)
+            ) : (
+              <p className="col-hint">{t("limits.noData")}</p>
             )}
           </div>
         </div>
@@ -198,6 +198,9 @@ function formatLimitError(error: string | null, t: TFunction): string | null {
   if (!error) return null;
 
   const normalized = error.trim().toLowerCase();
+  if (normalized === "not tested") {
+    return t("common.notMeasured");
+  }
   if (
     normalized === "the read operation timed out" ||
     normalized === "read timed out" ||
