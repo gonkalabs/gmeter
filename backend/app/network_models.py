@@ -14,20 +14,25 @@ KNOWN_MODEL_LABELS: dict[str, str] = {
     "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
     "MiniMaxAI/MiniMax-M2.7": "MiniMax M2.7",
     "deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
+    "zai-org/GLM-5.3-Flash": "GLM-5.3 Flash",
     "zai-org/GLM-5.2-FP8": "GLM-5.2 FP8",
     "moonshotai/kimi-k2.6": "Kimi K2.6",
     "qwen/qwen3-235b-a22b-instruct-2507-fp8": "Qwen3 235B FP8",
     "minimaxai/minimax-m2.7": "MiniMax M2.7",
     "deepseek-ai/deepseek-v4-flash-0731": "DeepSeek V4 Flash",
+    "zai-org/glm-5.3-flash": "GLM-5.3 Flash",
     "zai-org/glm-5.2-fp8": "GLM-5.2 FP8",
     "gonka/moonshotai/Kimi-K2.6": "Kimi K2.6",
     "gonka/Qwen/Qwen3-235B-A22B-Instruct-2507-FP8": "Qwen3 235B FP8",
     "gonka/MiniMaxAI/MiniMax-M2.7": "MiniMax M2.7",
     "gonka/deepseek-ai/DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
+    "gonka/zai-org/GLM-5.3-Flash": "GLM-5.3 Flash",
     "gonka/zai-org/GLM-5.2-FP8": "GLM-5.2 FP8",
     "kimi-k2.6": "Kimi K2.6",
     "minimax-m2.7": "MiniMax M2.7",
     "deepseek-v4-flash": "DeepSeek V4 Flash",
+    "glm-5.3-flash": "GLM-5.3 Flash",
+    "glm-5.3": "GLM-5.3 Flash",
     "glm-5.2": "GLM-5.2 FP8",
 }
 
@@ -46,11 +51,14 @@ def split_model_csv(raw: str | None) -> list[str]:
     return [item.strip() for item in (raw or "").split(",") if item.strip()]
 
 
+DEPRECATED_MODEL_PATTERNS = ("kimi-k2.6", "kimi-k2")
+
+
 def active_model_ids() -> list[str]:
     defaults = [
-        "moonshotai/Kimi-K2.6",
         "MiniMaxAI/MiniMax-M2.7",
         "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "zai-org/GLM-5.3-Flash",
     ]
     return split_model_csv(settings.active_models) or defaults
 
@@ -61,6 +69,7 @@ def known_model_ids() -> list[str]:
         "moonshotai/Kimi-K2.6",
         "MiniMaxAI/MiniMax-M2.7",
         "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "zai-org/GLM-5.3-Flash",
         "zai-org/GLM-5.2-FP8",
         "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8",
     ]
@@ -78,6 +87,8 @@ def _tails_compatible(left: str, right: str) -> bool:
 
 
 def is_active_model(model_id: str) -> bool:
+    if is_deprecated_model(model_id):
+        return False
     normalized = normalize_model_id(model_id)
     active = _active_normalized()
     if normalized in active:
@@ -92,6 +103,11 @@ def is_active_model(model_id: str) -> bool:
 def is_optional_model(model_id: str) -> bool:
     normalized = normalize_model_id(model_id)
     return any(pattern in normalized for pattern in OPTIONAL_MODEL_PATTERNS)
+
+
+def is_deprecated_model(model_id: str) -> bool:
+    normalized = normalize_model_id(model_id)
+    return any(pattern in normalized for pattern in DEPRECATED_MODEL_PATTERNS)
 
 
 def filter_active_models(model_ids: list[str]) -> list[str]:
@@ -114,9 +130,11 @@ def network_model_catalog() -> list[NetworkModelStatus]:
         if key in seen:
             continue
         seen.add(key)
-        is_active = is_active_model(model_id)
+        is_active = is_active_model(model_id) and not is_deprecated_model(model_id)
         note = None
-        if is_active and is_optional_model(model_id):
+        if is_deprecated_model(model_id):
+            note = "Deprecated — disabled in tests; historical probe data is kept."
+        elif is_active and is_optional_model(model_id):
             note = "Optional PoC model from epoch 309 — hosts opt in; broker availability varies."
         elif not is_active:
             if is_optional_model(model_id):
@@ -153,10 +171,17 @@ def network_notice() -> str:
         for item in catalog
         if not item.active and is_optional_model(item.model_id)
     ]
+    deprecated = [
+        item.label
+        for item in catalog
+        if is_deprecated_model(item.model_id)
+    ]
     retired = [
         item.label
         for item in catalog
-        if not item.active and not is_optional_model(item.model_id)
+        if not item.active
+        and not is_optional_model(item.model_id)
+        and not is_deprecated_model(item.model_id)
     ]
 
     if not optional_active and not optional_unavailable and not retired:
@@ -176,9 +201,13 @@ def network_notice() -> str:
         parts.append(
             f"{opt_text} is an optional PoC model with no live hosts right now — not being probed."
         )
+    if deprecated:
+        dep_text = ", ".join(deprecated)
+        verb = "is" if len(deprecated) == 1 else "are"
+        parts.append(f"{dep_text} {verb} deprecated and no longer probed.")
     if retired:
         retired_text = ", ".join(retired)
         verb = "is" if len(retired) == 1 else "are"
         parts.append(f"{retired_text} {verb} retired — historical probe data is kept.")
 
-    return "From Gonka epoch 309 onward (DeepSeek V4 Flash added later), " + " ".join(parts)
+    return "From Gonka epoch 309 onward (DeepSeek V4 Flash and GLM-5.3 Flash added later), " + " ".join(parts)

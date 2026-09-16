@@ -106,6 +106,7 @@ class ModelBlock(BaseModel):
     model: str
     label: str
     active: bool = True
+    deprecated: bool = False
     metrics: list[MetricBlock]
 
 
@@ -113,6 +114,7 @@ class NetworkModelStatus(BaseModel):
     model_id: str
     label: str
     active: bool
+    deprecated: bool = False
     status_note: str | None = None
 
 

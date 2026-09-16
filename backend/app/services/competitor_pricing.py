@@ -24,6 +24,10 @@ _VARIANT_LOOKUPS: dict[str, list[str]] = {
         "z-ai/glm-5.2",
         "z-ai/glm-5",
     ],
+    normalize_model_id("zai-org/GLM-5.3-Flash"): [
+        "z-ai/glm-5.3-flash",
+        "z-ai/glm-5.3",
+    ],
 }
 
 
@@ -35,6 +39,7 @@ def _friendly_label(model_id: str) -> str:
         "MiniMax-M2.7": "MiniMax M2.7",
         "DeepSeek-V4-Flash-0731": "DeepSeek V4 Flash",
         "GLM-5.2-FP8": "GLM-5.2 FP8",
+        "GLM-5.3-Flash": "GLM-5.3 Flash",
     }
     return labels.get(tail, tail.replace("-", " "))
 

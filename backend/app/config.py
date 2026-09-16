@@ -11,12 +11,13 @@ class Settings(BaseSettings):
         "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7,deepseek-ai/DeepSeek-V4-Flash-0731"
     )
     active_models: str = (
-        "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7,deepseek-ai/DeepSeek-V4-Flash-0731,"
-        "zai-org/GLM-5.2-FP8"
+        "MiniMaxAI/MiniMax-M2.7,deepseek-ai/DeepSeek-V4-Flash-0731,"
+        "zai-org/GLM-5.3-Flash,zai-org/GLM-5.2-FP8"
     )
     known_models: str = (
         "moonshotai/Kimi-K2.6,MiniMaxAI/MiniMax-M2.7,deepseek-ai/DeepSeek-V4-Flash-0731,"
-        "zai-org/GLM-5.2-FP8,Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
+        "zai-org/GLM-5.3-Flash,zai-org/GLM-5.2-FP8,"
+        "Qwen/Qwen3-235B-A22B-Instruct-2507-FP8"
     )
     brokers_config_path: str = "brokers.json"
     brokers_config_json: str = ""

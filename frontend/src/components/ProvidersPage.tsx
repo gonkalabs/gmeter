@@ -120,9 +120,13 @@ export function ProvidersPage({ detail, loading }: Props) {
                       onClick={() => selectModel(model.model)}
                     >
                       <span className="entity-name">{model.label}</span>
-                      <span className={`health-badge tone-${healthFromMetrics(model.metrics)}`}>
-                        {healthLabel(healthFromMetrics(model.metrics), t)}
-                      </span>
+                      {model.deprecated ? (
+                        <span className="health-badge tone-warn">{t("models.deprecated")}</span>
+                      ) : (
+                        <span className={`health-badge tone-${healthFromMetrics(model.metrics)}`}>
+                          {healthLabel(healthFromMetrics(model.metrics), t)}
+                        </span>
+                      )}
                       <span className="entity-meta">{keyMetrics(model.metrics, "model", t)}</span>
                     </button>
                   </li>

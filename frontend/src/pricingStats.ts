@@ -1,5 +1,29 @@
 import type { DashboardDetail, ModelPriceComparison } from "./types";
 
+/** GLM-5.2 is optional and currently unserved on the network — keep it off /compare. */
+export function isUnservedCompareModel(modelId: string, label = ""): boolean {
+  const hay = `${modelId} ${label}`.toLowerCase();
+  return hay.includes("glm-5.2") || hay.includes("glm 5.2");
+}
+
+export function dashboardDetailForCompare(detail: DashboardDetail): DashboardDetail {
+  return {
+    ...detail,
+    network_models: (detail.network_models ?? []).filter(
+      (item) => !isUnservedCompareModel(item.model_id, item.label)
+    ),
+    network_notice: stripUnservedCompareNotice(detail.network_notice),
+  };
+}
+
+function stripUnservedCompareNotice(notice: string | null | undefined): string | null | undefined {
+  if (!notice) return notice;
+  return notice
+    .replace(/\s*GLM-5\.2 FP8[^.]*\./g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 export interface AxisRange {
   low: number;
   high: number;

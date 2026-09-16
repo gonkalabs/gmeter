@@ -66,7 +66,10 @@ export function NetworkEpochBanner({ detail, compact = false }: Props) {
                   <ul className="network-epoch-models">
                     {inactive.map((item) => (
                       <li key={item.model_id}>
-                        <span className="network-epoch-model-name">{item.label}</span>
+                        <span className="network-epoch-model-name">
+                          {item.label}
+                          {item.deprecated ? ` · ${t("models.deprecated")}` : ""}
+                        </span>
                         {item.status_note ? (
                           <span className="network-epoch-model-note">{item.status_note}</span>
                         ) : null}

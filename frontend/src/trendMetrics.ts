@@ -6,10 +6,12 @@ export const MODEL_LABELS: Record<string, string> = {
   qwen: "qwen",
   minimax: "minimax",
   deepseek: "deepseek-v4-flash",
-  glm: "glm-5.2",
+  glm: "glm",
+  glm52: "glm-5.2",
+  glm53: "glm-5.3-flash",
 };
 
-const MODEL_ORDER = ["kimi", "minimax", "deepseek", "glm", "qwen"];
+const MODEL_ORDER = ["kimi", "minimax", "deepseek", "glm53", "glm52", "glm", "qwen"];
 
 export interface TrendChartPoint {
   time: string;
@@ -26,6 +28,8 @@ export function modelKey(modelId: string): string {
   if (normalized.includes("qwen")) return "qwen";
   if (normalized.includes("minimax")) return "minimax";
   if (normalized.includes("deepseek")) return "deepseek";
+  if (normalized.includes("glm-5.3") || normalized.includes("glm 5.3")) return "glm53";
+  if (normalized.includes("glm-5.2") || normalized.includes("glm 5.2")) return "glm52";
   if (normalized.includes("glm")) return "glm";
   return normalized.split("/").pop() ?? normalized;
 }

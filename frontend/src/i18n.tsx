@@ -55,6 +55,7 @@ const en = {
   "health.degraded": "Degraded",
   "health.down": "Down",
   "health.unknown": "Unknown",
+  "models.deprecated": "Deprecated",
   "health.overallTitle": "Overall health score (0-100)",
   "metrics.api_uptime.label": "API uptime",
   "metrics.api_uptime.help": "Gateway responds to /models",
@@ -90,7 +91,7 @@ const en = {
   "network.epochBadge": "Epoch 309",
   "network.epochTitle": "Network model update",
   "network.epochFallback":
-    "From Gonka epoch 309 onward, Kimi K2.6, MiniMax M2.7, and DeepSeek V4 Flash are active PoC models. GLM-5.2 FP8 is optional (voluntary for hosts). Qwen3 235B remains retired — historical data is kept.",
+    "MiniMax M2.7, DeepSeek V4 Flash, and GLM-5.3 Flash are active PoC models. Kimi K2.6 is deprecated and no longer probed. GLM-5.2 FP8 is optional (voluntary for hosts). Qwen3 235B remains retired — historical data is kept.",
   "network.readUpdate": "Read network update",
   "network.aiBadge": "AI status",
   "network.aiTitle": "Network summary",
@@ -465,6 +466,7 @@ const ru: Record<keyof typeof en, string> = {
   "health.degraded": "Просадка",
   "health.down": "Недоступен",
   "health.unknown": "Неизвестно",
+  "models.deprecated": "Устарела",
   "health.overallTitle": "Общая оценка здоровья (0-100)",
   "metrics.api_uptime.label": "Доступность API",
   "metrics.api_uptime.help": "Шлюз отвечает на /models",
@@ -500,7 +502,7 @@ const ru: Record<keyof typeof en, string> = {
   "network.epochBadge": "Эпоха 309",
   "network.epochTitle": "Обновление моделей сети",
   "network.epochFallback":
-    "С эпохи Gonka 309 активны Kimi K2.6, MiniMax M2.7 и DeepSeek V4 Flash. GLM-5.2 FP8 — опциональная модель (хосты подключают добровольно). Qwen3 235B снята — исторические данные сохранены.",
+    "Активны MiniMax M2.7, DeepSeek V4 Flash и GLM-5.3 Flash. Kimi K2.6 устарела и больше не тестируется. GLM-5.2 FP8 — опциональная модель (хосты подключают добровольно). Qwen3 235B снята — исторические данные сохранены.",
   "network.readUpdate": "Подробнее об обновлении",
   "network.aiBadge": "ИИ-статус",
   "network.aiTitle": "Сводка по сети",

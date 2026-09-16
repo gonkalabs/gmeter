@@ -9,6 +9,7 @@ import {
   formatTimesLabel,
   formatUsd,
   formatUsdRange,
+  isUnservedCompareModel,
   median,
   toPercent,
   type ModelPricingStats,
@@ -67,10 +68,13 @@ export function PriceComparison({ detail, standalone = false }: Props) {
 
   const modelStats = useMemo(
     () =>
-      (comparison?.models ?? []).map((model) =>
-        buildModelPricingStats(model, detail, formatNumber)
-      ),
-    [comparison, detail, formatNumber]
+      (comparison?.models ?? [])
+        .filter(
+          (model) =>
+            !standalone || !isUnservedCompareModel(model.model_id, model.label)
+        )
+        .map((model) => buildModelPricingStats(model, detail, formatNumber)),
+    [comparison, detail, formatNumber, standalone]
   );
 
   useEffect(() => {

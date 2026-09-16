@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { dashboardDetailForCompare } from "../pricingStats";
 import type { DashboardDetail } from "../types";
 import { useI18n, type Locale } from "../i18n";
 import { useTheme } from "../useTheme";
@@ -30,6 +31,11 @@ export function ComparePricesPage() {
     const interval = setInterval(() => refresh(true), 60_000);
     return () => clearInterval(interval);
   }, [refresh]);
+
+  const compareDetail = useMemo(
+    () => (detail ? dashboardDetailForCompare(detail) : null),
+    [detail]
+  );
 
   return (
     <div className="site compare-prices-site">
@@ -84,12 +90,12 @@ export function ComparePricesPage() {
           </div>
         ) : null}
 
-        {loading && !detail ? (
+        {loading && !compareDetail ? (
           <div className="compare-prices-loading">{t("pricing.loading")}</div>
-        ) : detail ? (
+        ) : compareDetail ? (
           <>
-            <NetworkEpochBanner detail={detail} compact />
-            <PriceComparison detail={detail} standalone />
+            <NetworkEpochBanner detail={compareDetail} compact />
+            <PriceComparison detail={compareDetail} standalone />
             <div className="compare-prices-contact-wrap">
               <a
                 className="compare-prices-contact"

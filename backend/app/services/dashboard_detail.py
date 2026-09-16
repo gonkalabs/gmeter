@@ -5,7 +5,13 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import Broker, ProbeResult, ProbeRun
-from app.network_models import NETWORK_UPDATE_URL, is_active_model, network_model_catalog, network_notice
+from app.network_models import (
+    NETWORK_UPDATE_URL,
+    is_active_model,
+    is_deprecated_model,
+    network_model_catalog,
+    network_notice,
+)
 from app.schemas import (
     DashboardDetail,
     DashboardMetrics,
@@ -248,6 +254,7 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
                         model=model_id,
                         label=model_label(model_id, aliases),
                         active=is_active_model(model_id),
+                        deprecated=is_deprecated_model(model_id),
                         metrics=_metric_blocks(
                             run.results,
                             run_id=run.id,
@@ -278,6 +285,7 @@ def get_dashboard_detail(db: Session, broker_id: int | None = None) -> Dashboard
             model_id=item.model_id,
             label=item.label,
             active=item.active,
+            deprecated=is_deprecated_model(item.model_id),
             status_note=item.status_note,
         )
         for item in network_model_catalog()

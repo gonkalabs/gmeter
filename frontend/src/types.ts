@@ -52,6 +52,7 @@ export interface ModelBlock {
   model: string;
   label: string;
   active?: boolean;
+  deprecated?: boolean;
   metrics: MetricBlock[];
 }
 
@@ -59,6 +60,7 @@ export interface NetworkModelStatus {
   model_id: string;
   label: string;
   active: boolean;
+  deprecated?: boolean;
   status_note?: string | null;
 }
 
