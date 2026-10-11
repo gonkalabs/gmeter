@@ -10,6 +10,22 @@ export default async function middleware(request: Request) {
   if (request.headers.get("x-gmeter-index") === "1") return;
   if (url.pathname === "/index.html" || url.pathname.startsWith("/fonts/")) return;
 
+  if (url.pathname.startsWith("/preview/") && url.pathname.endsWith(".jpg")) {
+    const file = decodeURIComponent(url.pathname.slice("/preview/".length)).replace(/\.jpe?g$/i, "");
+    const path = !file || file === "home" ? "/" : `/${file.replace(/__/g, "/")}`;
+    const card = await buildShare(path);
+    const { shareJpeg } = await import("./share/jpeg");
+    const jpeg = await shareJpeg(card);
+    const body = new Uint8Array(jpeg);
+    return new Response(body, {
+      headers: {
+        "content-type": "image/jpeg",
+        "content-length": String(body.byteLength),
+        "cache-control": "public, max-age=600",
+      },
+    });
+  }
+
   const ogPage = pagePathFromOg(url.pathname);
   if (ogPage) {
     const card = await buildShare(ogPage);
