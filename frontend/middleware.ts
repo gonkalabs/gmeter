@@ -13,11 +13,9 @@ export default async function middleware(request: Request) {
     return shareImage(card);
   }
 
-  const accept = request.headers.get("accept") || "";
-  const destination = request.headers.get("sec-fetch-dest") || "";
   const userAgent = request.headers.get("user-agent") || "";
-  const isDocument = accept.includes("text/html") && destination !== "script" && destination !== "style";
-  if (!isDocument || !isShareBot(userAgent)) return;
+  const asset = /\.[a-z0-9]+$/i.test(url.pathname);
+  if (asset || !isShareBot(userAgent)) return;
 
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const card = await buildShare(path);

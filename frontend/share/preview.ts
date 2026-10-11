@@ -79,7 +79,7 @@ export function pagePathFromOg(pathname: string): string | null {
 
 export function ogImagePath(pagePath: string) {
   const clean = pagePath === "/" ? "" : pagePath.replace(/\/$/, "");
-  return `/og${clean}/image.png?v=1`;
+  return `/og${clean}/image.png?v=2`;
 }
 
 export async function buildShare(pathname: string): Promise<ShareCard> {
@@ -89,7 +89,7 @@ export async function buildShare(pathname: string): Promise<ShareCard> {
   } catch {
     return baseCard(path, {
       kicker: "meter",
-      kickerColor: "#ff7029",
+      kickerColor: "#3dd68c",
       headline: titleCase(path === "/" ? "Overview" : path.split("/").filter(Boolean).slice(-1)[0] || "Meter"),
       sub: "Gonka network observability",
       stats: [],
@@ -146,7 +146,7 @@ async function cardFor(path: string): Promise<ShareCard> {
       .join(" · ");
     return baseCard(path, {
       kicker: "network",
-      kickerColor: "#ff7029",
+      kickerColor: "#3dd68c",
       headline,
       sub,
       stats: aggregateStats(data),
@@ -162,7 +162,7 @@ async function cardFor(path: string): Promise<ShareCard> {
     const counts = countStatus(data.providers);
     return baseCard(path, {
       kicker: "providers",
-      kickerColor: "#bbbfff",
+      kickerColor: "#b5b5be",
       headline: `${data.providers.length} providers`,
       sub: `${counts.healthy} healthy · ${counts.degraded} degraded · ${counts.down} down`,
       stats: aggregateStats(data),
@@ -173,7 +173,7 @@ async function cardFor(path: string): Promise<ShareCard> {
   if (route.name === "trends") {
     return baseCard(path, {
       kicker: "trends",
-      kickerColor: "#bbbfff",
+      kickerColor: "#b5b5be",
       headline: route.model || "All models",
       sub: "Latency, uptime, failed probes, and output",
       stats: aggregateStats(data),
@@ -197,7 +197,7 @@ async function cardFor(path: string): Promise<ShareCard> {
   if (route.name === "compare") {
     return baseCard(path, {
       kicker: "prices",
-      kickerColor: "#ff7029",
+      kickerColor: "#3dd68c",
       headline: "Gonka vs the market",
       sub: "USD per 1M tokens, input and output",
       stats: aggregateStats(data),
@@ -224,7 +224,7 @@ async function cardFor(path: string): Promise<ShareCard> {
 
   return baseCard(path, {
     kicker: "meter",
-    kickerColor: "#ff7029",
+    kickerColor: "#3dd68c",
     headline: "Gonka network status",
     sub: "Live probes across public brokers",
     stats: aggregateStats(data),
@@ -277,7 +277,7 @@ async function historyCard(path: string, runId: number | null, resultId: number 
   if (runId == null) {
     return baseCard(path, {
       kicker: "history",
-      kickerColor: "#bbbfff",
+      kickerColor: "#b5b5be",
       headline: "Probe runs",
       sub: "Quick checks and limit runs",
       stats: [],
@@ -349,7 +349,7 @@ function toneFrom(uptime: number | null, failed: number | null, latency: number 
   if ((failed != null && failed > 5) || (uptime != null && uptime < 95) || (latency != null && latency > 10)) {
     return { label: "degraded", color: "#ffb020" };
   }
-  if (uptime == null && failed == null) return { label: "meter", color: "#ff7029" };
+  if (uptime == null && failed == null) return { label: "meter", color: "#3dd68c" };
   return { label: "healthy", color: "#3dd68c" };
 }
 
