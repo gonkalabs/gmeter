@@ -71,15 +71,14 @@ export function isShareBot(userAgent: string) {
 }
 
 export function pagePathFromOg(pathname: string): string | null {
-  if (!pathname.startsWith("/og/") || !pathname.endsWith("/image.png")) return null;
-  const rest = pathname.slice("/og".length, -"/image.png".length);
-  if (!rest || rest === "/") return "/";
-  return rest.startsWith("/") ? rest : `/${rest}`;
+  const match = pathname.match(/^\/og(\/.*)?\/image\.(png|jpe?g)$/);
+  if (!match) return null;
+  return match[1] || "/";
 }
 
 export function ogImagePath(pagePath: string) {
   const clean = pagePath === "/" ? "" : pagePath.replace(/\/$/, "");
-  return `/og${clean}/image.png?v=2`;
+  return `/og${clean}/image.jpg?v=3`;
 }
 
 export async function buildShare(pathname: string): Promise<ShareCard> {
@@ -98,17 +97,12 @@ export async function buildShare(pathname: string): Promise<ShareCard> {
   }
 }
 
-export function shareHtml(card: ShareCard, pageUrl: string, imageUrl: string) {
+export function shareMeta(card: ShareCard, pageUrl: string, imageUrl: string) {
   const title = esc(card.title);
   const description = esc(card.description);
   const image = esc(imageUrl);
   const url = esc(pageUrl);
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${title}</title>
+  return `<title>${title}</title>
   <meta name="description" content="${description}" />
   <link rel="canonical" href="${url}" />
   <meta property="og:type" content="website" />
@@ -118,14 +112,36 @@ export function shareHtml(card: ShareCard, pageUrl: string, imageUrl: string) {
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="${image}" />
   <meta property="og:image:secure_url" content="${image}" />
-  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${title}" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="${title}" />
   <meta name="twitter:description" content="${description}" />
-  <meta name="twitter:image" content="${image}" />
+  <meta name="twitter:image" content="${image}" />`;
+}
+
+export function injectShare(html: string, card: ShareCard, pageUrl: string, imageUrl: string) {
+  const stripped = html
+    .replace(/<title>[\s\S]*?<\/title>/gi, "")
+    .replace(/<meta[^>]+property=["']og:[^"']+["'][^>]*>/gi, "")
+    .replace(/<meta[^>]+name=["']twitter:[^"']+["'][^>]*>/gi, "")
+    .replace(/<meta[^>]+name=["']description["'][^>]*>/gi, "")
+    .replace(/<link[^>]+rel=["']canonical["'][^>]*>/gi, "");
+  const meta = shareMeta(card, pageUrl, imageUrl);
+  if (stripped.includes("</head>")) return stripped.replace("</head>", `${meta}\n</head>`);
+  return `${meta}\n${stripped}`;
+}
+
+export function shareHtml(card: ShareCard, pageUrl: string, imageUrl: string) {
+  const url = esc(pageUrl);
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  ${shareMeta(card, pageUrl, imageUrl)}
 </head>
 <body>
   <p><a href="${url}">Open this page on meter.gonka.gg</a></p>

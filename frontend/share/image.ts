@@ -1,5 +1,7 @@
 import { createElement as h } from "react";
 import { ImageResponse } from "@vercel/og";
+import { PNG } from "pngjs";
+import jpeg from "jpeg-js";
 import type { ShareCard } from "./preview";
 
 let fontRegular: ArrayBuffer | null = null;
@@ -11,10 +13,14 @@ export async function shareImage(card: ShareCard) {
     width: 1200,
     height: 630,
     fonts,
-    headers: {
-      "cache-control": "public, max-age=600",
-    },
   });
+}
+
+export async function shareJpeg(card: ShareCard) {
+  const rendered = await shareImage(card);
+  const png = PNG.sync.read(Buffer.from(await rendered.arrayBuffer()));
+  const encoded = jpeg.encode({ data: png.data, width: png.width, height: png.height }, 85);
+  return encoded.data as Buffer;
 }
 
 function cardElement(card: ShareCard) {
