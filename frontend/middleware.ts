@@ -1,32 +1,14 @@
-import { next } from "@vercel/functions";
 import { buildShare, injectShare, isShareBot, ogImagePath, pagePathFromOg, shareHtml } from "./share/preview";
 import { shareImage } from "./share/image";
 
 export const config = {
-  runtime: "nodejs",
   matcher: ["/((?!assets/|favicon.ico|fonts/).*)"],
 };
 
 export default async function middleware(request: Request) {
   const url = new URL(request.url);
-  if (request.headers.get("x-gmeter-index") === "1") return next();
-  if (url.pathname === "/index.html" || url.pathname.startsWith("/fonts/")) return next();
-
-  if (url.pathname.startsWith("/preview/") && url.pathname.endsWith(".jpg")) {
-    const file = decodeURIComponent(url.pathname.slice("/preview/".length)).replace(/\.jpe?g$/i, "");
-    const path = !file || file === "home" ? "/" : `/${file.replace(/__/g, "/")}`;
-    const card = await buildShare(path);
-    const { shareJpeg } = await import("./share/jpeg");
-    const jpeg = await shareJpeg(card);
-    const body = new Uint8Array(jpeg);
-    return new Response(body, {
-      headers: {
-        "content-type": "image/jpeg",
-        "content-length": String(body.byteLength),
-        "cache-control": "public, max-age=600",
-      },
-    });
-  }
+  if (request.headers.get("x-gmeter-index") === "1") return;
+  if (url.pathname === "/index.html" || url.pathname.startsWith("/fonts/")) return;
 
   const ogPage = pagePathFromOg(url.pathname);
   if (ogPage) {
@@ -34,12 +16,12 @@ export default async function middleware(request: Request) {
     return shareImage(card);
   }
 
-  if (url.pathname.startsWith("/api")) return next();
-  if (/\.[a-z0-9]+$/i.test(url.pathname)) return next();
+  if (url.pathname.startsWith("/api")) return;
+  if (/\.[a-z0-9]+$/i.test(url.pathname)) return;
 
   const destination = request.headers.get("sec-fetch-dest") || "";
   if (destination === "script" || destination === "style" || destination === "font" || destination === "image") {
-    return next();
+    return;
   }
 
   const accept = request.headers.get("accept") || "";
@@ -58,12 +40,12 @@ export default async function middleware(request: Request) {
     });
   }
 
-  if (!accept.includes("text/html") && destination !== "document") return next();
+  if (!accept.includes("text/html") && destination !== "document") return;
 
   const indexResponse = await fetch(new URL("/index.html", url.origin), {
     headers: { "x-gmeter-index": "1" },
   });
-  if (!indexResponse.ok) return next();
+  if (!indexResponse.ok) return;
 
   const card = await buildShare(path);
   const html = injectShare(await indexResponse.text(), card, pageUrl, imageUrl);
