@@ -1,8 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { shareDevMiddleware } from "./share/dev";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "share-preview",
+      configureServer(server) {
+        server.middlewares.use(shareDevMiddleware());
+      },
+    },
+  ],
   server: {
     port: 5173,
     proxy: {
