@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/preview/:file",
+      "destination": "/api/preview?file=:file"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://gmeter-production.up.railway.app/api/:path*"
     },
