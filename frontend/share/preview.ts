@@ -77,8 +77,8 @@ export function pagePathFromOg(pathname: string): string | null {
 }
 
 export function ogImagePath(pagePath: string) {
-  const clean = pagePath === "/" ? "home" : pagePath.replace(/^\//, "").replace(/\/+$/, "").replace(/\//g, "__");
-  return `/preview/${clean}.jpg`;
+  const clean = pagePath === "/" ? "" : pagePath.replace(/\/$/, "");
+  return `/og${clean}/image.png?v=4`;
 }
 
 export async function buildShare(pathname: string): Promise<ShareCard> {
@@ -112,7 +112,7 @@ export function shareMeta(card: ShareCard, pageUrl: string, imageUrl: string) {
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="${image}" />
   <meta property="og:image:secure_url" content="${image}" />
-  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${title}" />
