@@ -78,7 +78,7 @@ export function pagePathFromOg(pathname: string): string | null {
 
 export function ogImagePath(pagePath: string) {
   const clean = pagePath === "/" ? "" : pagePath.replace(/\/$/, "");
-  return `/og${clean}/image.jpg?v=3`;
+  return `/og${clean}/image.png?v=4`;
 }
 
 export async function buildShare(pathname: string): Promise<ShareCard> {
@@ -112,7 +112,7 @@ export function shareMeta(card: ShareCard, pageUrl: string, imageUrl: string) {
   <meta property="og:url" content="${url}" />
   <meta property="og:image" content="${image}" />
   <meta property="og:image:secure_url" content="${image}" />
-  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${title}" />
@@ -404,8 +404,8 @@ async function loadSnapshot(): Promise<Snapshot> {
 
 async function fetchSnapshot(): Promise<Snapshot> {
   const [detailRes, gatewayRes] = await Promise.all([
-    fetch(`${API}/api/metrics/dashboard/detail`, { signal: AbortSignal.timeout(12000) }),
-    fetch(`${API}/api/metrics/gateways?hours=24`, { signal: AbortSignal.timeout(12000) }).catch(() => null),
+    fetch(`${API}/api/metrics/dashboard/detail`, { signal: AbortSignal.timeout(4000) }),
+    fetch(`${API}/api/metrics/gateways?hours=24`, { signal: AbortSignal.timeout(4000) }).catch(() => null),
   ]);
   if (!detailRes.ok) throw new Error("dashboard unavailable");
   const detail = await detailRes.json();

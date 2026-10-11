@@ -1,5 +1,5 @@
 import { buildShare, isShareBot, ogImagePath, pagePathFromOg, shareHtml } from "./preview";
-import { shareJpeg } from "./image";
+import { shareImage } from "./image";
 
 export function shareDevMiddleware() {
   return async (req: any, res: any, next: (error?: unknown) => void) => {
@@ -8,9 +8,10 @@ export function shareDevMiddleware() {
       const ogPage = pagePathFromOg(url.pathname);
       if (ogPage) {
         const card = await buildShare(ogPage);
-        const bytes = await shareJpeg(card);
+        const image = await shareImage(card);
+        const bytes = Buffer.from(await image.arrayBuffer());
         res.statusCode = 200;
-        res.setHeader("content-type", "image/jpeg");
+        res.setHeader("content-type", "image/png");
         res.setHeader("content-length", String(bytes.length));
         res.setHeader("cache-control", "public, max-age=300");
         res.end(bytes);
