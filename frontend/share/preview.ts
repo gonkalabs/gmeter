@@ -130,7 +130,9 @@ export function injectShare(html: string, card: ShareCard, pageUrl: string, imag
     .replace(/<meta[^>]+name=["']description["'][^>]*>/gi, "")
     .replace(/<link[^>]+rel=["']canonical["'][^>]*>/gi, "");
   const meta = shareMeta(card, pageUrl, imageUrl);
-  if (stripped.includes("</head>")) return stripped.replace("</head>", `${meta}\n</head>`);
+  if (/<head[^>]*>/i.test(stripped)) {
+    return stripped.replace(/<head[^>]*>/i, (open) => `${open}\n${meta}`);
+  }
   return `${meta}\n${stripped}`;
 }
 

@@ -1,4 +1,4 @@
-import { buildShare, injectShare, isShareBot, ogImagePath, pagePathFromOg } from "./share/preview";
+import { buildShare, injectShare, isShareBot, ogImagePath, pagePathFromOg, shareHtml } from "./share/preview";
 import { shareImage } from "./share/image";
 
 export const config = {
@@ -26,18 +26,29 @@ export default async function middleware(request: Request) {
 
   const accept = request.headers.get("accept") || "";
   const userAgent = request.headers.get("user-agent") || "";
-  const wantsDocument = isShareBot(userAgent) || accept.includes("text/html") || destination === "document";
-  if (!wantsDocument) return;
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const pageUrl = `${url.origin}${path === "/" ? "/" : path}`;
+  const imageUrl = `${url.origin}${ogImagePath(path)}`;
+
+  if (isShareBot(userAgent)) {
+    const card = await buildShare(path);
+    return new Response(shareHtml(card, pageUrl, imageUrl), {
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "public, max-age=300",
+      },
+    });
+  }
+
+  if (!accept.includes("text/html") && destination !== "document") return;
 
   const indexResponse = await fetch(new URL("/index.html", url.origin), {
     headers: { "x-gmeter-index": "1" },
   });
   if (!indexResponse.ok) return;
 
-  const path = url.pathname.replace(/\/+$/, "") || "/";
   const card = await buildShare(path);
-  const pageUrl = `${url.origin}${path === "/" ? "/" : path}`;
-  const html = injectShare(await indexResponse.text(), card, pageUrl, `${url.origin}${ogImagePath(path)}`);
+  const html = injectShare(await indexResponse.text(), card, pageUrl, imageUrl);
   return new Response(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
