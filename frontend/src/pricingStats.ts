@@ -6,6 +6,11 @@ export function isUnservedCompareModel(modelId: string, label = ""): boolean {
   return hay.includes("glm-5.2") || hay.includes("glm 5.2");
 }
 
+export function isRetiredLineupModel(modelId: string, label = ""): boolean {
+  const hay = `${modelId} ${label}`.toLowerCase();
+  return hay.includes("kimi");
+}
+
 export function dashboardDetailForCompare(detail: DashboardDetail): DashboardDetail {
   return {
     ...detail,

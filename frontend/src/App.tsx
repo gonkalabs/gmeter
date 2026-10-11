@@ -1,57 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
-import { LIMITS_INTERVAL_MINUTES, PROBE_INTERVAL_MINUTES } from "./metrics";
 import type { Broker, DashboardDetail, LimitsDetail, ProbeRun } from "./types";
+import { BrokerIndexProvider } from "./brokerLinks";
+import { BrokerPage } from "./components/BrokerPage";
+import { ComparePricesPage } from "./components/ComparePricesPage";
 import { LimitsPage } from "./components/LimitsPage";
 import { MetricLogsPage } from "./components/MetricLogsPage";
 import { OverviewPage } from "./components/OverviewPage";
 import { ProvidersPage } from "./components/ProvidersPage";
 import { RunHistory } from "./components/RunHistory";
+import { SiteShell } from "./components/SiteShell";
 import { TrendsPage } from "./components/TrendsPage";
-import { useI18n, type Locale } from "./i18n";
-import { useTheme } from "./useTheme";
-
-type Tab = "overview" | "trends" | "providers" | "limits" | "history";
-
-type AppView =
-  | { kind: "tab"; tab: Tab }
-  | { kind: "metric"; tab: Tab; metricKey: string; brokerId: number };
+import { useI18n } from "./i18n";
+import {
+  metricPath,
+  navigate,
+  parseRoute,
+  providerPath,
+  useLocationPath,
+  type RouteName,
+} from "./routes";
 
 export default function App() {
-  const [view, setView] = useState<AppView>({ kind: "tab", tab: "overview" });
+  const href = useLocationPath();
+  const pathname = href.split("?")[0] || "/";
+  const search = href.includes("?") ? href.slice(href.indexOf("?")) : "";
+  const route = useMemo(() => parseRoute(pathname), [pathname]);
+  const metricQuery = useMemo(() => new URLSearchParams(search).get("metric"), [search]);
+
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [detail, setDetail] = useState<DashboardDetail | null>(null);
   const [limits, setLimits] = useState<LimitsDetail | null>(null);
   const [runs, setRuns] = useState<ProbeRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { theme, toggleTheme } = useTheme();
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
 
   const probing = runs.some((r) => r.status === "running" || r.status === "queued");
   const refreshMs = probing ? 8000 : 60_000;
-  const tab = view.kind === "tab" ? view.tab : view.tab;
 
-  const selectedMetric = useMemo(() => {
-    if (view.kind !== "metric" || !detail) return null;
-    const provider = detail.providers.find((p) => p.broker_id === view.brokerId);
-    return provider?.metrics.find((m) => m.key === view.metricKey) ?? null;
-  }, [view, detail]);
-
-  const selectedBrokerName = useMemo(() => {
-    if (view.kind !== "metric" || !detail) return null;
-    return detail.providers.find((p) => p.broker_id === view.brokerId)?.broker_name ?? null;
-  }, [view, detail]);
-
-  const selectedBrokerBaseUrl = useMemo(() => {
-    if (view.kind !== "metric" || !detail) return null;
-    return detail.providers.find((p) => p.broker_id === view.brokerId)?.base_url ?? null;
-  }, [view, detail]);
-
-  const goToTab = (next: Tab) => setView({ kind: "tab", tab: next });
-  const openMetric = (metricKey: string, brokerId: number) =>
-    setView({ kind: "metric", tab: "overview", metricKey, brokerId });
-  const closeMetric = () => setView({ kind: "tab", tab: "overview" });
+  useEffect(() => {
+    const path = window.location.pathname.replace(/\/$/, "") || "/";
+    if (path === "/compare/start") navigate("/compare", true);
+  }, [href]);
 
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -71,7 +62,7 @@ export default function App() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     refresh();
@@ -82,146 +73,151 @@ export default function App() {
     return () => clearInterval(interval);
   }, [refresh, refreshMs]);
 
+  const selectedMetric = useMemo(() => {
+    if (route.name !== "metric" || !detail) return null;
+    const provider = detail.providers.find((p) => p.broker_id === route.brokerId);
+    return provider?.metrics.find((m) => m.key === route.metricKey) ?? null;
+  }, [route, detail]);
+
+  const selectedBroker = useMemo(() => {
+    if (route.name !== "metric" || !detail) return null;
+    return detail.providers.find((p) => p.broker_id === route.brokerId) ?? null;
+  }, [route, detail]);
+
+  const brokerName =
+    route.name === "broker"
+      ? detail?.providers.find((item) => item.broker_id === route.brokerId)?.broker_name
+      : undefined;
+  const page = pageCopy(route.name, t, brokerName);
+
+  useEffect(() => {
+    document.title = `${page.title} · meter.gonka.gg`;
+  }, [page.title]);
+
+  const jumps =
+    route.name === "overview"
+      ? [
+          { href: "/#gauges", label: t("overview.jumpGauges") },
+          { href: "/#glance", label: t("overview.jumpGlance") },
+          { href: "/#prices", label: t("overview.jumpPrices") },
+        ]
+      : undefined;
+
   return (
-    <div className="site">
-      <div className="grid-bg" aria-hidden />
-
-      <header className="topbar">
-        <div className="topbar-inner">
-          <div className="brand" aria-label="G meter">
-            <div className="brand-mark" aria-hidden="true">G</div>
-            <div>
-              <div className="brand-name">meter</div>
-              <div className="brand-tag">{t("app.tagline")}</div>
-            </div>
-          </div>
-
-          <nav className="nav">
-            {(
-              [
-                ["overview", t("tabs.overview")],
-                ["trends", t("tabs.trends")],
-                ["providers", t("tabs.providers")],
-                ["limits", t("tabs.limits")],
-                ["history", t("tabs.history")],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                className={`nav-link ${
-                  (view.kind === "tab" && tab === id) ||
-                  (view.kind === "metric" && view.tab === id)
-                    ? "active"
-                    : ""
-                }`}
-                onClick={() => goToTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-            <a className="nav-link" href="/compare">
-              {t("tabs.compare")}
-            </a>
-          </nav>
-
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            title={theme === "light" ? t("app.theme.dark") : t("app.theme.light")}
-          >
-            {theme === "light" ? "◐" : "◑"}
-          </button>
-
-          <div className="language-toggle" role="group" aria-label={t("app.language")}>
-            {(["en", "ru"] as const).map((id: Locale) => (
-              <button
-                key={id}
-                type="button"
-                className={locale === id ? "active" : ""}
-                onClick={() => setLocale(id)}
-              >
-                {id.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <div className="status-chip">
-            <span className={`status-dot ${probing ? "pulse" : "live"}`} />
-            {probing ? t("app.measuring") : t("app.live")}
-            {brokers.length > 0 && (
-              <span className="provider-count">
-                · {brokers.length}{" "}
-                {brokers.length === 1 ? t("app.provider") : t("app.providers")}
-              </span>
-            )}
-          </div>
+    <BrokerIndexProvider brokers={brokers.map((broker) => ({ id: broker.id, name: broker.name }))}>
+    <SiteShell
+      active={route.name}
+      title={page.title}
+      lead={page.lead}
+      jumps={jumps}
+      probing={probing}
+      brokerCount={brokers.length}
+    >
+      {error && (
+        <div className="banner banner-error" role="alert">
+          {error}
         </div>
-      </header>
+      )}
 
-      <main className="main">
-        {error && (
-          <div className="banner banner-error" role="alert">
-            {error}
-          </div>
-        )}
+      {route.name === "overview" && (
+        <OverviewPage
+          detail={detail}
+          loading={loading}
+          probing={probing}
+          onSelectMetric={(metric, brokerId) => {
+            const provider = detail?.providers.find((p) => p.broker_id === brokerId);
+            navigate(metricPath(provider?.broker_name ?? "broker", brokerId, metric.key));
+          }}
+        />
+      )}
 
-        {view.kind === "metric" && selectedMetric && (
-          <MetricLogsPage
-            metric={selectedMetric}
-            brokerId={view.brokerId}
-            brokerName={selectedBrokerName}
-            brokerBaseUrl={selectedBrokerBaseUrl}
-            onBack={closeMetric}
-          />
-        )}
-        {view.kind === "metric" && !selectedMetric && !loading && (
-          <div className="empty-state compact">
-            <h2>{t("errors.metricNotFound")}</h2>
-            <button type="button" className="page-back" onClick={closeMetric}>
-              ← {t("errors.backToOverview")}
-            </button>
-          </div>
-        )}
+      {route.name === "trends" && (
+        <TrendsPage runs={runs} brokers={brokers} loading={loading} model={route.model} />
+      )}
 
-        {view.kind === "tab" && tab === "overview" && (
-          <OverviewPage
-            detail={detail}
-            loading={loading}
-            probing={probing}
-            onSelectMetric={(metric, brokerId) => openMetric(metric.key, brokerId)}
-          />
-        )}
-        {view.kind === "tab" && tab === "trends" && (
-          <TrendsPage runs={runs} brokers={brokers} loading={loading} />
-        )}
-        {view.kind === "tab" && tab === "providers" && (
-          <ProvidersPage detail={detail} loading={loading} />
-        )}
-        {view.kind === "tab" && tab === "limits" && (
-          <LimitsPage limits={limits} loading={loading} probing={probing} />
-        )}
-        {view.kind === "tab" && tab === "history" && (
-          <RunHistory runs={runs} brokers={brokers} loading={loading} />
-        )}
-      </main>
+      {route.name === "providers" && (
+        <ProvidersPage
+          detail={detail}
+          loading={loading}
+          brokerId={route.brokerId}
+          model={route.model}
+          logs={route.logs}
+          metricKey={metricQuery}
+        />
+      )}
 
-      <footer className="footer">
-        <span>
-          {t("app.footer", {
-            probe: PROBE_INTERVAL_MINUTES,
-            limits: LIMITS_INTERVAL_MINUTES,
-          })}
-        </span>
-        <span className="footer-links">
-          <a href="https://github.com/gonkalabs/gmeter" target="_blank" rel="noreferrer">
-            {t("app.githubRepo")}
+      {route.name === "limits" && (
+        <LimitsPage
+          limits={limits}
+          loading={loading}
+          probing={probing}
+          brokerId={route.brokerId}
+          model={route.model}
+        />
+      )}
+
+      {route.name === "history" && (
+        <RunHistory
+          runs={runs}
+          brokers={brokers}
+          loading={loading}
+          runId={route.runId}
+          resultId={route.resultId}
+        />
+      )}
+
+      {route.name === "compare" && (
+        <ComparePricesPage detail={detail} loading={loading} error={error} />
+      )}
+
+      {route.name === "broker" && (
+        <BrokerPage brokerId={route.brokerId} detail={detail} limits={limits} loading={loading} />
+      )}
+
+      {route.name === "metric" && selectedMetric && (
+        <MetricLogsPage
+          metric={selectedMetric}
+          brokerId={route.brokerId}
+          brokerName={selectedBroker?.broker_name}
+          brokerBaseUrl={selectedBroker?.base_url}
+          backHref={
+            selectedBroker
+              ? providerPath(selectedBroker.broker_name, selectedBroker.broker_id)
+              : "/"
+          }
+        />
+      )}
+
+      {route.name === "metric" && !selectedMetric && !loading && (
+        <div className="empty-state compact">
+          <h2>{t("errors.metricNotFound")}</h2>
+          <a className="page-back" href="/">
+            ← {t("errors.backToOverview")}
           </a>
-          <a href="https://gonkalabs.com" target="_blank" rel="noreferrer">
-            {t("app.developers")}
+        </div>
+      )}
+
+      {route.name === "notfound" && (
+        <div className="empty-state compact">
+          <p>{t("notFound.hint")}</p>
+          <a className="page-back" href="/">
+            {t("notFound.home")}
           </a>
-        </span>
-      </footer>
-    </div>
+        </div>
+      )}
+    </SiteShell>
+    </BrokerIndexProvider>
   );
+}
+
+function pageCopy(name: RouteName, t: ReturnType<typeof useI18n>["t"], brokerName?: string) {
+  if (name === "trends") return { title: t("tabs.trends") };
+  if (name === "providers") return { title: t("tabs.providers") };
+  if (name === "limits") return { title: t("tabs.limits") };
+  if (name === "history") return { title: t("tabs.history") };
+  if (name === "compare") return { title: t("tabs.compare"), lead: t("pricing.hint") };
+  if (name === "metric") return { title: t("tabs.overview") };
+  if (name === "broker") return { title: brokerName || t("tabs.providers") };
+  if (name === "notfound") return { title: t("notFound.title") };
+  return { title: t("tabs.overview"), lead: t("app.tagline") };
 }

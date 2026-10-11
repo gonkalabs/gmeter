@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     ai_summary_base_url: str = ""
     ai_summary_api_key: str = ""
     ai_summary_interval_minutes: int = 15
+    gonka_gg_stats_api_key: str = ""
 
 
 settings = Settings()

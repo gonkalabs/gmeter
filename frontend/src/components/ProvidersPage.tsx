@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import type { DashboardDetail, MeasurementLog, MetricBlock, ProviderBlock } from "../types";
+import { useEffect, useState } from "react";
+import type { DashboardDetail, MeasurementLog, MetricBlock, ModelBlock, ProviderBlock } from "../types";
 import { api } from "../api";
+import { providerModelPath } from "../routes";
 import {
   displayMetricValue,
+  displayMetricValueCompact,
+  GLANCE_COLUMNS,
+  glanceLabel,
   healthFromMetrics,
   healthLabel,
   metricMeta,
@@ -11,8 +15,11 @@ import {
   toneForMetric,
 } from "../metrics";
 import { useI18n, type TranslationKey } from "../i18n";
-import { hostFromUrl } from "../brokerLinks";
+import { BrokerLink, hostFromUrl } from "../brokerLinks";
+import { modelKey } from "../trendMetrics";
 import { ProbeLogTable } from "./ProbeLogTable";
+
+const MODEL_ORDER = ["minimax", "deepseek", "glm53", "glm52", "kimi", "qwen", "glm"];
 
 function metricProbeCount(metric: MetricBlock) {
   if (metric.logs.length > 0) return metric.logs.length;
@@ -30,37 +37,15 @@ function metricProbeCount(metric: MetricBlock) {
 interface Props {
   detail: DashboardDetail | null;
   loading: boolean;
+  brokerId: number | null;
+  model: string | null;
+  logs: boolean;
+  metricKey: string | null;
 }
 
-export function ProvidersPage({ detail, loading }: Props) {
+export function ProvidersPage({ detail, loading, brokerId, model, logs, metricKey }: Props) {
   const { t, formatDate } = useI18n();
-  const [selectedProvider, setSelectedProvider] = useState<number | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string | null>(null);
-  const modelsColumnRef = useRef<HTMLDivElement>(null);
-
-  const activeProvider = detail?.providers.find((p) => p.broker_id === selectedProvider);
-
-  useEffect(() => {
-    if (selectedProvider == null || !window.matchMedia("(max-width: 900px)").matches) return;
-
-    const frame = window.requestAnimationFrame(() => {
-      modelsColumnRef.current?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-        block: "start",
-      });
-    });
-
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedProvider]);
-
-  function selectProvider(id: number) {
-    setSelectedProvider((prev) => (prev === id ? null : id));
-    setSelectedModel(null);
-  }
-
-  function selectModel(modelId: string) {
-    setSelectedModel((prev) => (prev === modelId ? null : modelId));
-  }
+  const [summaryProvider, setSummaryProvider] = useState<ProviderBlock | null>(null);
 
   if (loading && !detail) {
     return <div className="skeleton-panel" />;
@@ -75,6 +60,38 @@ export function ProvidersPage({ detail, loading }: Props) {
     );
   }
 
+  const provider = brokerId == null ? null : detail.providers.find((item) => item.broker_id === brokerId) ?? null;
+  const selected = provider && model ? findModel(provider, model) : null;
+
+  if (model) {
+    if (!provider || !selected) {
+      return (
+        <div className="empty-state compact">
+          <p>{t("providers.missing")}</p>
+          <a className="page-back" href="/providers">
+            ← {t("providers.back")}
+          </a>
+        </div>
+      );
+    }
+    return (
+      <div className="dashboard-layout">
+        <a className="page-back" href="/providers">
+          ← {t("providers.back")}
+        </a>
+        <ModelDetail
+          key={`${provider.broker_id}:${selected.model}:${logs ? "logs" : "summary"}`}
+          provider={provider}
+          modelId={selected.model}
+          logs={logs}
+          metricKey={metricKey}
+        />
+      </div>
+    );
+  }
+
+  const columns = columnsFor(detail.providers);
+
   return (
     <div className="dashboard-layout">
       <section className="page-section">
@@ -83,154 +100,228 @@ export function ProvidersPage({ detail, loading }: Props) {
           <p>{t("providers.hint")}</p>
         </header>
 
-        <div className="explorer">
-          <div className="explorer-col">
-            <div className="col-title">{t("providers.listTitle", { count: detail.providers.length })}</div>
-            <ul className="entity-list">
-              {detail.providers.map((provider) => (
-                <ProviderListItem
-                  key={provider.broker_id}
-                  provider={provider}
-                  active={selectedProvider === provider.broker_id}
-                  onSelect={() => selectProvider(provider.broker_id)}
-                  formatDate={formatDate}
-                  t={t}
-                />
-              ))}
-            </ul>
-          </div>
-
-          <div className="explorer-col explorer-models" ref={modelsColumnRef}>
-            <div className="col-title">
-              {activeProvider
-                ? t("providers.modelsFor", { provider: activeProvider.broker_name })
-                : t("providers.models")}
-            </div>
-            {!activeProvider ? (
-              <p className="col-hint">← {t("providers.selectProvider")}</p>
-            ) : !activeProvider.latest_run_id ? (
-              <p className="col-hint">{t("providers.noMeasurements")}</p>
-            ) : (
-              <ul className="entity-list">
-                {activeProvider.models.map((model) => (
-                  <li key={model.model}>
-                    <button
-                      type="button"
-                      className={`entity-item ${selectedModel === model.model ? "active" : ""}`}
-                      onClick={() => selectModel(model.model)}
-                    >
-                      <span className="entity-name">{model.label}</span>
-                      {model.deprecated ? (
-                        <span className="health-badge tone-warn">{t("models.deprecated")}</span>
-                      ) : (
-                        <span className={`health-badge tone-${healthFromMetrics(model.metrics)}`}>
-                          {healthLabel(healthFromMetrics(model.metrics), t)}
-                        </span>
-                      )}
-                      <span className="entity-meta">{keyMetrics(model.metrics, "model", t)}</span>
-                    </button>
-                  </li>
+        <div className="limits-matrix provider-matrix">
+          <table>
+            <thead>
+              <tr>
+                <th className="limits-broker" scope="col">
+                  {t("limits.providers")}
+                </th>
+                {columns.map((column) => (
+                  <th key={column.key} scope="col">
+                    {column.label}
+                  </th>
                 ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="explorer-col explorer-detail">
-            <div className="col-title">{t("providers.details")}</div>
-            {!activeProvider || !selectedModel ? (
-              <p className="col-hint">
-                {!activeProvider
-                  ? t("providers.selectProviderModel")
-                  : `← ${t("providers.selectModel")}`}
-              </p>
-            ) : (
-              <ModelDetail
-                key={`${activeProvider.broker_id}:${selectedModel}`}
-                provider={activeProvider}
-                modelId={selectedModel}
-              />
-            )}
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {detail.providers.map((item) => {
+                const tone = item.latest_run_id ? healthFromMetrics(item.metrics) : "neutral";
+                return (
+                  <tr key={item.broker_id} className={item.broker_id === brokerId ? "is-current" : undefined}>
+                    <th className="limits-broker" scope="row">
+                      <div className="provider-broker-top">
+                        <BrokerLink name={item.broker_name} baseUrl={item.base_url}>
+                          <strong>{item.broker_name}</strong>
+                        </BrokerLink>
+                        {item.ai_summary ? (
+                          <button
+                            type="button"
+                            className="glance-ai-btn"
+                            onClick={() => setSummaryProvider(item)}
+                            title={t("network.aiOpen")}
+                            aria-label={t("network.aiOpenFor", { provider: item.broker_name })}
+                          >
+                            <MessageIcon />
+                          </button>
+                        ) : (
+                          <span className="glance-ai-spacer" aria-hidden="true" />
+                        )}
+                      </div>
+                      <span className="limits-broker-host">{hostFromUrl(item.base_url)}</span>
+                      <span className="limits-broker-time">
+                        {item.latest_run_at
+                          ? formatDate(item.latest_run_at, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : t("common.notMeasured")}
+                      </span>
+                      <span className={`health-badge tone-${tone}`}>{healthLabel(tone, t)}</span>
+                    </th>
+                    {columns.map((column) => {
+                      const cell = modelFor(item, column.key);
+                      if (!cell) {
+                        return (
+                          <td key={column.key} className="limits-empty">
+                            —
+                          </td>
+                        );
+                      }
+                      const cellTone = cell.deprecated ? "warn" : healthFromMetrics(cell.metrics);
+                      const byKey = new Map(cell.metrics.map((metric) => [metric.key, metric]));
+                      return (
+                        <td key={column.key}>
+                          <a
+                            className={`provider-cell tone-${cellTone}`}
+                            href={providerModelPath(item.broker_name, item.broker_id, cell.model)}
+                            aria-label={t("providers.cellLabel", {
+                              provider: item.broker_name,
+                              model: cell.label,
+                            })}
+                          >
+                            <span className={`health-badge tone-${cellTone}`}>
+                              {cell.deprecated ? t("models.deprecated") : healthLabel(cellTone, t)}
+                            </span>
+                            {GLANCE_COLUMNS.map((key) => {
+                              const metric = byKey.get(key);
+                              return (
+                                <span className="provider-cell-line" key={key}>
+                                  <span>{glanceLabel(key, t)}</span>
+                                  <strong>{metric ? displayMetricValueCompact(metric) : "—"}</strong>
+                                </span>
+                              );
+                            })}
+                          </a>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </section>
+
+      {summaryProvider?.ai_summary ? (
+        <AiSummaryModal provider={summaryProvider} onClose={() => setSummaryProvider(null)} />
+      ) : null}
     </div>
   );
 }
 
-function keyMetrics(
-  metrics: import("../types").MetricBlock[],
-  scope: "provider" | "model" = "model",
-  t?: ReturnType<typeof useI18n>["t"]
-) {
-  const lat = metrics.find((m) => m.key === "latency")?.value ?? "—";
-  if (scope === "provider") {
-    const up = metrics.find((m) => m.key === "api_uptime")?.value ?? "—";
-    return `${up} · ${lat}`;
+function columnsFor(providers: ProviderBlock[]) {
+  const labels = new Map<string, string>();
+  for (const provider of providers) {
+    for (const model of provider.models) {
+      const key = modelKey(model.model);
+      if (!labels.has(key)) labels.set(key, model.label);
+    }
   }
-  const failed = metrics.find((m) => m.key === "failed_probes")?.value ?? "—";
-  return t ? t("providers.failedMetric", { failed, latency: lat }) : `${failed} failed · ${lat}`;
+  return [...labels.entries()]
+    .sort((left, right) => {
+      const order = modelOrder(left[0]) - modelOrder(right[0]);
+      return order || left[1].localeCompare(right[1]);
+    })
+    .map(([key, label]) => ({ key, label }));
 }
 
-function ProviderListItem({
+function modelFor(provider: ProviderBlock, key: string) {
+  return provider.models.find((model) => modelKey(model.model) === key) ?? null;
+}
+
+function findModel(provider: ProviderBlock, modelId: string): ModelBlock | null {
+  return (
+    provider.models.find((model) => model.model === modelId) ??
+    provider.models.find((model) => modelKey(model.model) === modelKey(modelId)) ??
+    null
+  );
+}
+
+function modelOrder(key: string) {
+  const index = MODEL_ORDER.indexOf(key);
+  return index === -1 ? MODEL_ORDER.length : index;
+}
+
+function AiSummaryModal({
   provider,
-  active,
-  onSelect,
-  formatDate,
-  t,
+  onClose,
 }: {
   provider: ProviderBlock;
-  active: boolean;
-  onSelect: () => void;
-  formatDate: ReturnType<typeof useI18n>["formatDate"];
-  t: ReturnType<typeof useI18n>["t"];
+  onClose: () => void;
 }) {
-  const tone = provider.latest_run_id ? healthFromMetrics(provider.metrics) : "neutral";
-  const host = hostFromUrl(provider.base_url);
+  const { t } = useI18n();
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onClose]);
 
   return (
-    <li>
+    <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
-        className={`entity-item ${active ? "active" : ""}`}
-        role="button"
-        tabIndex={0}
-        onClick={onSelect}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") onSelect();
-        }}
+        className="modal-panel ai-summary-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="provider-ai-summary-title"
+        onClick={(event) => event.stopPropagation()}
       >
-        <span className="entity-name">{provider.broker_name}</span>
-        <span className={`health-badge tone-${tone}`}>{healthLabel(tone, t)}</span>
-        <span className="entity-host">{host}</span>
-        {provider.latest_run_at && (
-          <span className="entity-meta">
-            {formatDate(provider.latest_run_at, {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        )}
-        {provider.ai_summary ? (
-          <span className="entity-ai" title={provider.ai_summary}>
-            {provider.ai_summary}
-          </span>
-        ) : null}
+        <header className="modal-header">
+          <div className="modal-header-main">
+            <div className="modal-title-row">
+              <h2 id="provider-ai-summary-title">{t("network.aiBrokerTitle")}</h2>
+              <span className="network-epoch-badge network-ai-badge">{t("network.aiBadge")}</span>
+            </div>
+            <p className="modal-subtitle">
+              <BrokerLink name={provider.broker_name} baseUrl={provider.base_url} />
+              {" · "}
+              {hostFromUrl(provider.base_url)}
+            </p>
+          </div>
+          <button type="button" className="modal-close" onClick={onClose} aria-label={t("modal.closeLabel")}>
+            ×
+          </button>
+        </header>
+        <div className="modal-body">
+          <p className="ai-summary-modal-text">{provider.ai_summary}</p>
+        </div>
+        <footer className="modal-footer">
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            {t("common.close")}
+          </button>
+        </footer>
       </div>
-    </li>
+    </div>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25H9.3L5.7 19.2a.75.75 0 0 1-1.2-.6V6.75Z"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path d="M8.25 9.75h7.5M8.25 13h4.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
   );
 }
 
 function ModelDetail({
   provider,
   modelId,
+  logs,
+  metricKey,
 }: {
   provider: ProviderBlock;
   modelId: string;
+  logs: boolean;
+  metricKey: string | null;
 }) {
   const { t } = useI18n();
-  const [tab, setTab] = useState<"summary" | "logs">("summary");
-  const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(null);
+  const [selectedMetricKey, setSelectedMetricKey] = useState<string | null>(metricKey);
   const [loadedLogs, setLoadedLogs] = useState<Record<string, MeasurementLog[]>>({});
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsError, setLogsError] = useState("");
@@ -243,7 +334,11 @@ function ModelDetail({
     : null;
 
   useEffect(() => {
-    if (tab !== "logs" || !model || !selectedMetric) return;
+    setSelectedMetricKey(metricKey);
+  }, [metricKey]);
+
+  useEffect(() => {
+    if (!logs || !model || !selectedMetric) return;
 
     let cancelled = false;
     setLoadingLogs(true);
@@ -267,18 +362,17 @@ function ModelDetail({
     return () => {
       cancelled = true;
     };
-  }, [model, provider.broker_id, selectedMetric, t, tab]);
+  }, [logs, model, provider.broker_id, selectedMetric, t]);
 
   if (!model) return null;
 
-  const logs = selectedMetric
+  const logRows = selectedMetric
     ? loadedLogs[selectedMetric.key] ?? selectedMetric.logs
     : [];
 
-  function openLogs(metric: MetricBlock) {
-    setSelectedMetricKey(metric.key);
-    setTab("logs");
-  }
+  const summaryHref = providerModelPath(provider.broker_name, provider.broker_id, modelId);
+  const logsHref = (key?: string) =>
+    providerModelPath(provider.broker_name, provider.broker_id, modelId, true, key ?? metricKey);
 
   return (
     <div className="model-detail">
@@ -288,28 +382,16 @@ function ModelDetail({
           <code>{model.model}</code>
         </div>
         <div className="model-detail-tabs" role="tablist" aria-label={t("providers.details")}>
-          <button
-            type="button"
-            className={tab === "summary" ? "active" : ""}
-            onClick={() => setTab("summary")}
-            role="tab"
-            aria-selected={tab === "summary"}
-          >
+          <a className={logs ? "" : "active"} href={summaryHref} aria-current={logs ? undefined : "page"}>
             {t("providers.summary")}
-          </button>
-          <button
-            type="button"
-            className={tab === "logs" ? "active" : ""}
-            onClick={() => setTab("logs")}
-            role="tab"
-            aria-selected={tab === "logs"}
-          >
+          </a>
+          <a className={logs ? "active" : ""} href={logsHref()} aria-current={logs ? "page" : undefined}>
             {t("providers.logs")}
-          </button>
+          </a>
         </div>
       </div>
 
-      {tab === "summary" ? (
+      {!logs ? (
         <div className="model-summary-stack">
           <ModelDiagnostics metrics={model.metrics} />
 
@@ -325,11 +407,10 @@ function ModelDetail({
               const tone = toneForMetric(metric);
               const note = streamNote(metric, t);
               return (
-                <button
-                  type="button"
+                <a
                   key={metric.key}
                   className={`model-summary-row tone-${tone}`}
-                  onClick={() => openLogs(metric)}
+                  href={logsHref(metric.key)}
                   title={meta?.help}
                   role="row"
                 >
@@ -346,7 +427,7 @@ function ModelDetail({
                   <span className="model-summary-logs" role="cell">
                     {metricProbeCount(metric)}
                   </span>
-                </button>
+                </a>
               );
             })}
           </div>
@@ -358,18 +439,16 @@ function ModelDetail({
               const meta = metricMeta(metric.key, t);
               const active = selectedMetric?.key === metric.key;
               return (
-                <button
+                <a
                   key={metric.key}
-                  type="button"
                   className={active ? "active" : ""}
-                  onClick={() => setSelectedMetricKey(metric.key)}
-                  role="tab"
-                  aria-selected={active}
+                  href={logsHref(metric.key)}
+                  aria-current={active ? "page" : undefined}
                   title={meta?.help}
                 >
                   <span>{meta?.label ?? metric.label}</span>
                   <strong>{metricProbeCount(metric)}</strong>
-                </button>
+                </a>
               );
             })}
           </div>
@@ -381,7 +460,7 @@ function ModelDetail({
           {selectedMetric ? (
             <div className="model-log-table-wrap">
               <ProbeLogTable
-                logs={logs}
+                logs={logRows}
                 emptyMessage={
                   selectedMetric.key === "failed_probes"
                     ? t("logs.allPassed")

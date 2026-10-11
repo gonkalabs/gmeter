@@ -174,6 +174,46 @@ export interface ModelPriceComparison {
   no_exact_listing: boolean;
 }
 
+export interface GatewayCustomer {
+  org_name: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+export interface GatewayStatsRow {
+  name: string;
+  host: string;
+  url: string;
+  subtitle: string;
+  split_of?: string | null;
+  inferences: number | null;
+  confirmed_inferences: number | null;
+  tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  inference_share: number | null;
+  token_share: number | null;
+  confirmed_inference_share: number | null;
+  brokers?: GatewayCustomer[];
+}
+
+export interface GatewayStatsTotals {
+  inferences: number;
+  confirmed_inferences: number;
+  tokens: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+}
+
+export interface GatewayStats {
+  available: boolean;
+  hours: number;
+  rows: GatewayStatsRow[];
+  totals: GatewayStatsTotals | null;
+}
+
 export interface PricingComparison {
   checked_at: string;
   source: string;

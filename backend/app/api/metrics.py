@@ -11,6 +11,7 @@ from app.schemas import (
 )
 from app.services.competitor_pricing import get_pricing_comparison
 from app.services.dashboard_detail import get_dashboard_detail, get_metric_logs
+from app.services.gateway_stats import get_gateway_stats
 from app.services.limits import get_limits_detail
 from app.services.metrics import get_dashboard_metrics
 
@@ -45,3 +46,8 @@ def limits_detail(db: Session = Depends(get_db)):
 @router.get("/pricing/comparison", response_model=PricingComparison)
 def pricing_comparison():
     return get_pricing_comparison()
+
+
+@router.get("/gateways")
+def gateway_stats(hours: int = 24):
+    return get_gateway_stats(24 if hours != 24 else hours)

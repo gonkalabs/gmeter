@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Broker, ProbeRun } from "../types";
 import { PROBE_INTERVAL_MINUTES } from "../metrics";
+import { trendPath } from "../routes";
 import { collectTrendModels, modelLabel } from "../trendMetrics";
 import { MetricsCharts } from "./MetricsCharts";
 import { useI18n } from "../i18n";
@@ -9,16 +10,13 @@ interface Props {
   runs: ProbeRun[];
   brokers: Broker[];
   loading: boolean;
+  model: string | null;
 }
 
-type ModelFilter = { kind: "all" } | { kind: "model"; id: string };
-
-export function TrendsPage({ runs, brokers, loading }: Props) {
+export function TrendsPage({ runs, brokers, loading, model }: Props) {
   const { t } = useI18n();
   const models = useMemo(() => collectTrendModels(brokers, runs), [brokers, runs]);
-  const [filter, setFilter] = useState<ModelFilter>({ kind: "all" });
-
-  const chartModel = filter.kind === "all" ? null : filter.id;
+  const chartModel = model;
 
   const quickRuns = runs.filter(
     (r) =>
@@ -79,26 +77,20 @@ export function TrendsPage({ runs, brokers, loading }: Props) {
         {models.length > 0 && (
           <div className="trends-model-filter">
             <span className="filter-label">{t("trends.model")}</span>
-            <div className="pill-group" role="tablist" aria-label={t("trends.model")}>
-              <button
-                type="button"
-                role="tab"
-                className={`pill ${filter.kind === "all" ? "active" : ""}`}
-                onClick={() => setFilter({ kind: "all" })}
-              >
+            <div className="pill-group" role="navigation" aria-label={t("trends.model")}>
+              <a className={`pill ${chartModel ? "" : "active"}`} href={trendPath()} aria-current={chartModel ? undefined : "page"}>
                 {t("trends.allModels")}
-              </button>
+              </a>
               {models.map((modelId) => (
-                <button
-                  type="button"
-                  role="tab"
+                <a
                   key={modelId}
-                  className={`pill ${filter.kind === "model" && filter.id === modelId ? "active" : ""}`}
-                  onClick={() => setFilter({ kind: "model", id: modelId })}
+                  className={`pill ${chartModel === modelId ? "active" : ""}`}
+                  href={trendPath(modelId)}
                   title={modelId}
+                  aria-current={chartModel === modelId ? "page" : undefined}
                 >
                   {modelLabel(modelId, brokers)}
-                </button>
+                </a>
               ))}
             </div>
           </div>

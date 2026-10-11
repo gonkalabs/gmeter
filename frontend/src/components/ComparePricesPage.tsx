@@ -1,121 +1,45 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api";
-import { dashboardDetailForCompare } from "../pricingStats";
 import type { DashboardDetail } from "../types";
-import { useI18n, type Locale } from "../i18n";
-import { useTheme } from "../useTheme";
+import { dashboardDetailForCompare } from "../pricingStats";
+import { useI18n } from "../i18n";
 import { NetworkEpochBanner } from "./NetworkEpochBanner";
 import { PriceComparison } from "./PriceComparison";
 
-export function ComparePricesPage() {
-  const [detail, setDetail] = useState<DashboardDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const { theme, toggleTheme } = useTheme();
-  const { locale, setLocale, t } = useI18n();
+interface Props {
+  detail: DashboardDetail | null;
+  loading: boolean;
+  error: string;
+}
 
-  const refresh = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError("");
-    try {
-      setDetail(await api.getDashboardDetail());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.failedLoad"));
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  }, [t]);
+export function ComparePricesPage({ detail, loading, error }: Props) {
+  const { t } = useI18n();
+  const compareDetail = detail ? dashboardDetailForCompare(detail) : null;
 
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(() => refresh(true), 60_000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+  if (error && !compareDetail) return null;
 
-  const compareDetail = useMemo(
-    () => (detail ? dashboardDetailForCompare(detail) : null),
-    [detail]
-  );
+  if (loading && !compareDetail) {
+    return <div className="compare-prices-loading">{t("pricing.loading")}</div>;
+  }
+
+  if (!compareDetail) {
+    return (
+      <div className="empty-state compact-empty">
+        <strong>{t("overview.collecting")}</strong>
+        <p>{t("overview.collectingHint")}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="site compare-prices-site">
-      <div className="grid-bg" aria-hidden />
-
-      <header className="topbar compare-prices-topbar">
-        <div className="topbar-inner">
-          <a className="brand compare-prices-brand" href="/" aria-label={t("comparePrices.back")}>
-            <div className="brand-mark" aria-hidden="true">
-              G
-            </div>
-            <div>
-              <div className="brand-name">meter</div>
-              <div className="brand-tag">{t("pricing.title")}</div>
-            </div>
-          </a>
-
-          <div className="compare-prices-spacer" />
-
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            title={theme === "light" ? t("app.theme.dark") : t("app.theme.light")}
-          >
-            {theme === "light" ? "◐" : "◑"}
-          </button>
-
-          <div className="language-toggle" role="group" aria-label={t("app.language")}>
-            {(["en", "ru"] as const).map((id: Locale) => (
-              <button
-                key={id}
-                type="button"
-                className={locale === id ? "active" : ""}
-                onClick={() => setLocale(id)}
-              >
-                {id.toUpperCase()}
-              </button>
-            ))}
-          </div>
-
-          <a className="compare-prices-dashboard-link" href="/">
-            {t("comparePrices.dashboard")}
-          </a>
-        </div>
-      </header>
-
-      <main className="main compare-prices-main">
-        {error ? (
-          <div className="banner banner-error" role="alert">
-            {error}
-          </div>
-        ) : null}
-
-        {loading && !compareDetail ? (
-          <div className="compare-prices-loading">{t("pricing.loading")}</div>
-        ) : compareDetail ? (
-          <>
-            <NetworkEpochBanner detail={compareDetail} compact />
-            <PriceComparison detail={compareDetail} standalone />
-            <div className="compare-prices-contact-wrap">
-              <a
-                className="compare-prices-contact"
-                href="https://t.me/gonka_gg"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <TelegramIcon />
-                <span>{t("comparePrices.missingBroker")}</span>
-              </a>
-            </div>
-          </>
-        ) : (
-          <div className="empty-state compact-empty">
-            <strong>{t("overview.collecting")}</strong>
-            <p>{t("overview.collectingHint")}</p>
-          </div>
-        )}
-      </main>
-    </div>
+    <>
+      <NetworkEpochBanner detail={compareDetail} compact />
+      <PriceComparison detail={compareDetail} standalone />
+      <div className="compare-prices-contact-wrap">
+        <a className="compare-prices-contact" href="https://t.me/gonka_gg" target="_blank" rel="noreferrer">
+          <TelegramIcon />
+          <span>{t("comparePrices.missingBroker")}</span>
+        </a>
+      </div>
+    </>
   );
 }
 

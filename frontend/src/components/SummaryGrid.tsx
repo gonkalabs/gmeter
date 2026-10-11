@@ -102,7 +102,9 @@ function ProviderRow({
             >
               <MessageIcon />
             </button>
-          ) : null}
+          ) : (
+            <span className="glance-ai-spacer" aria-hidden="true" />
+          )}
         </div>
         <BrokerLink
           name={provider.broker_name}

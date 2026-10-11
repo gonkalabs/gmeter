@@ -1,6 +1,7 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import type { Broker, ProbeResult, ProbeRun } from "../types";
 import { api } from "../api";
+import { historyPath, navigate } from "../routes";
 import { testLabel } from "../probeTest";
 import { TestDetailModal } from "./TestDetailModal";
 import { useI18n } from "../i18n";
@@ -11,6 +12,8 @@ interface Props {
   runs: ProbeRun[];
   brokers: Broker[];
   loading: boolean;
+  runId: number | null;
+  resultId: number | null;
 }
 
 interface SelectedTest {
@@ -18,11 +21,39 @@ interface SelectedTest {
   result: ProbeResult;
 }
 
-export function RunHistory({ runs, brokers, loading }: Props) {
+export function RunHistory({ runs, brokers, loading, runId, resultId }: Props) {
   const { t, formatDate } = useI18n();
-  const [expanded, setExpanded] = useState<number | null>(null);
   const [selected, setSelected] = useState<SelectedTest | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const expanded = runId;
+
+  useEffect(() => {
+    if (runId == null || resultId == null) {
+      setSelected(null);
+      return;
+    }
+    let cancelled = false;
+    const known = runs.find((run) => run.id === runId);
+    const knownResult = known?.results.find((result) => result.id === resultId);
+    if (known && knownResult?.detail != null) {
+      setSelected({ run: known, result: knownResult });
+      return;
+    }
+    setLoadingDetail(true);
+    api
+      .getRun(runId)
+      .then((full) => {
+        if (cancelled) return;
+        const result = full.results.find((item) => item.id === resultId);
+        if (result) setSelected({ run: full, result });
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingDetail(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resultId, runId, runs]);
 
   const brokerName = (brokerId: number) =>
     brokers.find((b) => b.id === brokerId)?.name;
@@ -38,23 +69,6 @@ export function RunHistory({ runs, brokers, loading }: Props) {
     if (runType === "limits") return t("runType.limits");
     if (runType === "full") return t("runType.full");
     return t("runType.quick");
-  };
-
-  const openTest = async (run: ProbeRun, result: ProbeResult) => {
-    if (result.detail != null) {
-      setSelected({ run, result });
-      return;
-    }
-    setLoadingDetail(true);
-    try {
-      const full = await api.getRun(run.id);
-      const fullResult = full.results.find((item) => item.id === result.id) ?? result;
-      setSelected({ run: full, result: fullResult });
-    } catch {
-      setSelected({ run, result });
-    } finally {
-      setLoadingDetail(false);
-    }
   };
 
   if (loading && runs.length === 0) {
@@ -95,17 +109,19 @@ export function RunHistory({ runs, brokers, loading }: Props) {
               <Fragment key={run.id}>
                 <div
                   className={`history-row ${expanded === run.id ? "open" : ""}`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExpanded(expanded === run.id ? null : run.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      setExpanded(expanded === run.id ? null : run.id);
-                    }
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest("a")) return;
+                    navigate(expanded === run.id ? "/history" : historyPath(run.id));
                   }}
                 >
                   <div className="history-main">
-                    <span className="history-id">{t("history.run", { id: run.id })}</span>
+                    <a
+                      className="history-id"
+                      href={expanded === run.id ? "/history" : historyPath(run.id)}
+                      aria-expanded={expanded === run.id}
+                    >
+                      {t("history.run", { id: run.id })}
+                    </a>
                     <span className="run-type-pill">{runTypeLabel(run.run_type)}</span>
                     <span className={`status-pill ${run.status}`}>{statusLabel(run.status)}</span>
                     {broker && (
@@ -132,16 +148,15 @@ export function RunHistory({ runs, brokers, loading }: Props) {
                 </div>
 
                 {expanded === run.id && (
-                  <div className="history-detail">
+                  <div className="history-detail" aria-busy={loadingDetail}>
                     {run.error && <div className="banner banner-error">{run.error}</div>}
                     <div className="test-list">
                       {run.results.map((r) => (
-                        <button
-                          type="button"
+                        <a
                           className="test-item test-item-btn"
                           key={r.id}
-                          onClick={() => openTest(run, r)}
-                          disabled={loadingDetail}
+                          href={historyPath(run.id, r.id)}
+                          aria-current={resultId === r.id ? "page" : undefined}
                         >
                           <div className="test-left">
                             <span className={`test-dot ${r.ok ? "pass" : "fail"}`} />
@@ -160,7 +175,7 @@ export function RunHistory({ runs, brokers, loading }: Props) {
                           <span className={r.ok ? "pass-label" : "fail-label"}>
                             {r.ok ? t("common.pass") : t("common.fail")}
                           </span>
-                        </button>
+                        </a>
                       ))}
                     </div>
                   </div>
@@ -182,7 +197,7 @@ export function RunHistory({ runs, brokers, loading }: Props) {
             brokerForRun(selected.run.broker_id)?.model_aliases,
             t("common.endpoint")
           )}
-          onClose={() => setSelected(null)}
+          onClose={() => navigate(historyPath(runId))}
         />
       )}
     </>

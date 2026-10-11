@@ -58,6 +58,7 @@ export function collectTrendModels(brokers: Broker[], runs: ProbeRun[]): string[
       if (result.model !== "broker") ids.add(modelKey(result.model));
     }
   }
+  ids.delete("kimi");
   return [...ids].sort((a, b) => {
     const aIndex = MODEL_ORDER.indexOf(a);
     const bIndex = MODEL_ORDER.indexOf(b);

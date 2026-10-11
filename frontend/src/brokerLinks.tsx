@@ -1,10 +1,29 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { brokerPagePath } from "./routes";
 
 interface BrokerLinkProps {
   name: string;
+  brokerId?: number;
   baseUrl?: string;
   className?: string;
   children?: ReactNode;
+}
+
+export interface BrokerIndexEntry {
+  id: number;
+  name: string;
+}
+
+const BrokerIndexContext = createContext<BrokerIndexEntry[]>([]);
+
+export function BrokerIndexProvider({
+  brokers,
+  children,
+}: {
+  brokers: BrokerIndexEntry[];
+  children: ReactNode;
+}) {
+  return <BrokerIndexContext.Provider value={brokers}>{children}</BrokerIndexContext.Provider>;
 }
 
 export function brokerWebsiteUrl(name: string, baseUrl?: string) {
@@ -31,18 +50,16 @@ export function hostFromUrl(url: string) {
   }
 }
 
-export function BrokerLink({ name, baseUrl, className, children }: BrokerLinkProps) {
-  const href = brokerWebsiteUrl(name, baseUrl);
-  if (!href) return <span className={className}>{children ?? name}</span>;
+export function BrokerLink({ name, brokerId, className, children }: BrokerLinkProps) {
+  const index = useContext(BrokerIndexContext);
+  const id = brokerId ?? index.find((broker) => broker.name === name)?.id;
+  const href = id != null ? brokerPagePath(name, id) : null;
+  const classNames = className ? `broker-link ${className}` : "broker-link";
+
+  if (!href) return <span className={classNames}>{children ?? name}</span>;
 
   return (
-    <a
-      className={className ? `broker-link ${className}` : "broker-link"}
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      onClick={(event) => event.stopPropagation()}
-    >
+    <a className={classNames} href={href} onClick={(event) => event.stopPropagation()}>
       {children ?? name}
     </a>
   );

@@ -12,10 +12,10 @@ interface Props {
   brokerId: number;
   brokerName?: string | null;
   brokerBaseUrl?: string | null;
-  onBack: () => void;
+  backHref: string;
 }
 
-export function MetricLogsPage({ metric, brokerId, brokerName, brokerBaseUrl, onBack }: Props) {
+export function MetricLogsPage({ metric, brokerId, brokerName, brokerBaseUrl, backHref }: Props) {
   const { t } = useI18n();
   const [logs, setLogs] = useState(metric.logs);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -51,9 +51,9 @@ export function MetricLogsPage({ metric, brokerId, brokerName, brokerBaseUrl, on
 
   return (
     <div className="dashboard-layout metric-logs-page">
-      <button type="button" className="page-back" onClick={onBack}>
+      <a className="page-back" href={backHref}>
         ← {t("metricPage.back")}
-      </button>
+      </a>
 
       <header className={`metric-page-header tone-${tone}`}>
         <div className="metric-page-title">

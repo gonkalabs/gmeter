@@ -43,7 +43,7 @@ export function OverviewPage({ detail, loading, probing, onSelectMetric }: Props
       <StatusBanner detail={detail} probing={!!probing} />
       <NetworkEpochBanner detail={detail} />
 
-      <section className="page-section gauge-section">
+      <section className="page-section gauge-section" id="gauges">
         <header className="section-header">
           <div>
             <h2>{t("overview.liveGauges")}</h2>
@@ -53,7 +53,7 @@ export function OverviewPage({ detail, loading, probing, onSelectMetric }: Props
         <GaugeDashboard detail={detail} onSelect={onSelectMetric} />
       </section>
 
-      <section className="page-section glance-section">
+      <section className="page-section glance-section" id="glance">
         <header className="section-header glance-header">
           <div>
             <h2>{t("overview.atGlance")}</h2>

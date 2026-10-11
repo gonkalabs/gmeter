@@ -862,6 +862,241 @@ a:hover {
   margin-bottom: 4px;
 }
 
+.broker-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.broker-page-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.broker-visit {
+  margin-left: auto;
+  padding: 10px 18px;
+  border-radius: 32px;
+  background: var(--ink, #17171c);
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.broker-visit:hover {
+  color: #fff;
+}
+
+.broker-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.broker-stat {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.broker-stat span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.broker-stat strong {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.broker-panel-card {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.broker-panel-card h2,
+.broker-panel-head h2 {
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.broker-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.broker-panel-head span,
+.broker-role {
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.broker-note,
+.broker-summary {
+  margin: 8px 0 0;
+  max-width: 72ch;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.broker-docs {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.broker-all-stats {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 10px 18px;
+  border-radius: 32px;
+  background: var(--ink, #17171c);
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.broker-all-stats:hover {
+  color: #fff;
+}
+
+.broker-panel-card .limits-matrix {
+  margin-top: 12px;
+}
+
+.broker-panel-card .limits-matrix a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.compare-model-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.compare-model-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 32px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.compare-model-nav a em {
+  color: var(--good);
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.compare-model-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.compare-model-section {
+  scroll-margin-top: 88px;
+}
+
+.compare-model-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.compare-model-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.compare-model-head p {
+  margin: 4px 0 0;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.trend-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.trend-metric-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.trend-metric-head h3 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+
+.trend-metric-head span,
+.trend-metric-missing {
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.trend-metric-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.trend-metric-chart {
+  min-width: 0;
+  padding: 4px 8px 0;
+}
+
+.trend-metric-missing {
+  margin: 8px 0 0;
+}
+
 .trends-rows {
   display: flex;
   flex-direction: column;
@@ -2112,13 +2347,20 @@ a:hover {
 .glance-provider-top {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
 }
 
 .glance-provider-top .broker-link {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
+}
+
+.glance-ai-spacer {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
 }
 
 .glance-ai-btn {
@@ -3664,6 +3906,205 @@ a:hover {
   border-radius: 999px;
   border: 1px solid var(--border);
   color: var(--text-tertiary);
+}
+
+.limits-matrix {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.limits-matrix table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+
+.limits-matrix th,
+.limits-matrix td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+}
+
+.limits-matrix thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-subtle);
+  color: var(--text-tertiary);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.limits-matrix tbody tr:last-child th,
+.limits-matrix tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.limits-broker {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 168px;
+  background: var(--surface);
+}
+
+.limits-matrix thead .limits-broker {
+  z-index: 2;
+  background: var(--bg-subtle);
+}
+
+.limits-matrix tr.is-current .limits-broker,
+.limits-matrix tr.is-current td {
+  background: #edfce9;
+}
+
+[data-theme="dark"] .limits-matrix tr.is-current .limits-broker,
+[data-theme="dark"] .limits-matrix tr.is-current td {
+  background: rgba(237, 252, 233, 0.08);
+}
+
+.limits-broker strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.limits-broker-host,
+.limits-broker-time,
+.limits-detail-broker {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.limits-empty {
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.limits-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 148px;
+  min-height: 44px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.limits-cell:hover .limits-cell-value {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.limits-cell-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.limits-cell-label,
+.limits-cell-state {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.limits-cell-value {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.limits-cell-line.pass .limits-cell-state {
+  color: var(--good);
+}
+
+.limits-cell-line.fail .limits-cell-state {
+  color: var(--bad);
+}
+
+.provider-broker-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.provider-broker-top .broker-link {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.provider-broker-top strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-matrix .limits-broker .health-badge {
+  margin-top: 6px;
+}
+
+.provider-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 168px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.provider-cell-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.provider-cell-line strong {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.provider-cell:hover .provider-cell-line strong {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.limits-ladder-block {
+  margin-top: 16px;
+}
+
+.limits-ladder-block h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.limits-ladder-block h3 span {
+  color: var(--text-tertiary);
+  font-family: var(--font);
+  font-size: 13px;
 }
 
 .limits-layout {

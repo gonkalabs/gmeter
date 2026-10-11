@@ -4,11 +4,11 @@ import type { DashboardDetail, PricingComparison } from "../types";
 import {
   buildModelPricingStats,
   buildPriceDetailRows,
-  buildPriceSummaryRows,
   buildSharedDomain,
   formatTimesLabel,
   formatUsd,
   formatUsdRange,
+  isRetiredLineupModel,
   isUnservedCompareModel,
   median,
   toPercent,
@@ -16,6 +16,7 @@ import {
   type TrackDomain,
 } from "../pricingStats";
 import { useI18n, type TFunction } from "../i18n";
+import { modelKey } from "../trendMetrics";
 
 interface Props {
   detail: DashboardDetail;
@@ -44,7 +45,6 @@ export function PriceComparison({ detail, standalone = false }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [activeModelId, setActiveModelId] = useState<string>("");
-  const [detailExpanded, setDetailExpanded] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +69,7 @@ export function PriceComparison({ detail, standalone = false }: Props) {
   const modelStats = useMemo(
     () =>
       (comparison?.models ?? [])
+        .filter((model) => !isRetiredLineupModel(model.model_id, model.label))
         .filter(
           (model) =>
             !standalone || !isUnservedCompareModel(model.model_id, model.label)
@@ -101,17 +102,8 @@ export function PriceComparison({ detail, standalone = false }: Props) {
       })
     : null;
 
-  const toggleDetail = (modelId: string) => {
-    setDetailExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(modelId)) next.delete(modelId);
-      else next.add(modelId);
-      return next;
-    });
-  };
-
   return (
-    <section className={`page-section price-section ${standalone ? "price-section-standalone" : ""}`}>
+    <section id="prices" className={`page-section price-section ${standalone ? "price-section-standalone" : ""}`}>
       <header className="section-header price-header">
         <div>
           {!standalone && <h2>{t("pricing.title")}</h2>}
@@ -127,14 +119,32 @@ export function PriceComparison({ detail, standalone = false }: Props) {
           <div className="price-error">{error}</div>
         ) : standalone ? (
           <>
-            <div className="price-compare-cards">
+            <nav className="compare-model-nav" aria-label={t("pricing.title")}>
               {modelStats.map((stats) => (
-                <PriceCompareSummaryCard
+                <a key={stats.model.model_id} href={`#${modelKey(stats.model.model_id)}`}>
+                  {stats.model.label}
+                  {stats.cheaperLabel ? <em>{stats.cheaperLabel}×</em> : null}
+                </a>
+              ))}
+            </nav>
+            <div className="compare-model-sections">
+              {modelStats.map((stats) => (
+                <section
+                  className="compare-model-section"
+                  id={modelKey(stats.model.model_id)}
                   key={stats.model.model_id}
-                  stats={stats}
-                  expanded={detailExpanded.has(stats.model.model_id)}
-                  onToggle={() => toggleDetail(stats.model.model_id)}
-                />
+                >
+                  <header className="compare-model-head">
+                    <div>
+                      <h3>{stats.model.label}</h3>
+                      <p>{t("pricing.usdPerM")}</p>
+                    </div>
+                    {stats.cheaperLabel ? (
+                      <span className="price-visual-badge">{stats.cheaperLabel}×</span>
+                    ) : null}
+                  </header>
+                  <ModelPriceVisual stats={stats} showMultiplier={false} textOnly />
+                </section>
               ))}
             </div>
             <p className="price-footnote">{t("pricing.footnote")}</p>
@@ -224,88 +234,6 @@ function priceTableRowClass(row: { isGonka: boolean; isOpenRouter?: boolean }) {
   if (row.isGonka) return "is-gonka";
   if (row.isOpenRouter) return "is-openrouter";
   return "";
-}
-
-function PriceCompareSummaryCard({
-  stats,
-  expanded,
-  onToggle,
-}: {
-  stats: ModelPricingStats;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const { t } = useI18n();
-  const rows = useMemo(() => buildPriceSummaryRows(stats), [stats]);
-  const competitorCount = rows.filter((row) => !row.isGonka).length;
-
-  return (
-    <article className={`price-compare-card ${expanded ? "is-expanded" : ""}`}>
-      <header className="price-compare-card-head">
-        <div>
-          <h3>{stats.model.label}</h3>
-          <p>{t("comparePrices.summaryHint", { count: competitorCount })}</p>
-        </div>
-        <span className="price-compare-card-unit">{t("pricing.usdPerM")}</span>
-      </header>
-
-      {rows.length ? (
-        <div className="price-compare-table-wrap">
-          <table className="price-compare-table">
-            <thead>
-              <tr>
-                <th scope="col">{t("pricing.provider")}</th>
-                <th scope="col">{t("pricing.inputShort")}</th>
-                <th scope="col">{t("pricing.outputShort")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className={priceTableRowClass(row)}>
-                  <th scope="row">{priceTableRowLabel(row, t)}</th>
-                  <td>{row.inputPerM != null ? formatUsd(row.inputPerM) : "—"}</td>
-                  <td>{row.outputPerM != null ? formatUsd(row.outputPerM) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="price-compare-empty">{t("pricing.noExactListing")}</p>
-      )}
-
-      <button
-        type="button"
-        className="price-compare-details-toggle"
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
-        <span>{expanded ? t("comparePrices.hideDetails") : t("comparePrices.showDetails")}</span>
-        <svg
-          className={`price-expand-icon ${expanded ? "is-expanded" : ""}`}
-          viewBox="0 0 16 16"
-          width="14"
-          height="14"
-          aria-hidden
-        >
-          <path
-            d="M4 6l4 4 4-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-
-      {expanded ? (
-        <div className="price-compare-details">
-          <ModelPriceVisual stats={stats} showMultiplier={false} textOnly />
-        </div>
-      ) : null}
-    </article>
-  );
 }
 
 function PriceExpandAction({ label, expanded }: { label: string; expanded: boolean }) {
