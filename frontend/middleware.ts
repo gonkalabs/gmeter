@@ -1,14 +1,16 @@
+import { next } from "@vercel/functions";
 import { buildShare, injectShare, isShareBot, ogImagePath, pagePathFromOg, shareHtml } from "./share/preview";
 import { shareImage } from "./share/image";
 
 export const config = {
+  runtime: "nodejs",
   matcher: ["/((?!assets/|favicon.ico|fonts/).*)"],
 };
 
 export default async function middleware(request: Request) {
   const url = new URL(request.url);
-  if (request.headers.get("x-gmeter-index") === "1") return;
-  if (url.pathname === "/index.html" || url.pathname.startsWith("/fonts/")) return;
+  if (request.headers.get("x-gmeter-index") === "1") return next();
+  if (url.pathname === "/index.html" || url.pathname.startsWith("/fonts/")) return next();
 
   if (url.pathname.startsWith("/preview/") && url.pathname.endsWith(".jpg")) {
     const file = decodeURIComponent(url.pathname.slice("/preview/".length)).replace(/\.jpe?g$/i, "");
@@ -32,12 +34,12 @@ export default async function middleware(request: Request) {
     return shareImage(card);
   }
 
-  if (url.pathname.startsWith("/api")) return;
-  if (/\.[a-z0-9]+$/i.test(url.pathname)) return;
+  if (url.pathname.startsWith("/api")) return next();
+  if (/\.[a-z0-9]+$/i.test(url.pathname)) return next();
 
   const destination = request.headers.get("sec-fetch-dest") || "";
   if (destination === "script" || destination === "style" || destination === "font" || destination === "image") {
-    return;
+    return next();
   }
 
   const accept = request.headers.get("accept") || "";
@@ -56,12 +58,12 @@ export default async function middleware(request: Request) {
     });
   }
 
-  if (!accept.includes("text/html") && destination !== "document") return;
+  if (!accept.includes("text/html") && destination !== "document") return next();
 
   const indexResponse = await fetch(new URL("/index.html", url.origin), {
     headers: { "x-gmeter-index": "1" },
   });
-  if (!indexResponse.ok) return;
+  if (!indexResponse.ok) return next();
 
   const card = await buildShare(path);
   const html = injectShare(await indexResponse.text(), card, pageUrl, imageUrl);
